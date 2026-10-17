@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// ==========================================================
+//  قواعد امنیتی Firebase Storage — کارباما / Karbama
+//  در Firebase Console → Storage → Rules این متن را جای‌گذاری و Publish کن.
+//  ⚠️ مقدار ADMIN_UID_1 را با شناسه‌ی کاربری حساب مدیر عوض کن
+//     (Authentication → Users → User UID).
+// ==========================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid in [
+        "ADMIN_UID_1",   // ← شناسه‌ی کاربری مدیر را اینجا بگذار
+        "ADMIN_UID_2"    // ← اگر چند مدیر داری، ادامه بده
+      ];
+    }
+
+    function isImageUpTo5Mb() {
+      return request.resource.size < 5 * 1024 * 1024
+             && request.resource.contentType.matches('image/.*');
+    }
+
+    function isImageOrVideoUpTo25Mb() {
+      return request.resource.size < 25 * 1024 * 1024
+             && (request.resource.contentType.matches('image/.*')
+                 || request.resource.contentType.matches('video/.*'));
+    }
+
+    // ---------- مدارک متقاضیان: عکس پاسپورت و عکس تمام‌قد ----------
+    match /applicants/{uid}/{fileName} {
+      // خود فرد و مدیران می‌توانند ببینند
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+
+      // فقط خود فرد آپلود می‌کند؛ حداکثر ۵ مگابایت و فقط تصویر
+      allow write: if isSignedIn()
+                   && request.auth.uid == uid
+                   && isImageUpTo5Mb();
+    }
+
+    // ---------- #29: عکس‌ها و ویدیوهای آگهی (که مدیر انتخاب می‌کند) ----------
+    // مسیرها: jobs/{jobId}/job_<time>_<rand>.jpg | .mp4  و  jobs/{jobId}/poster_….jpg
+    match /jobs/{jobId}/{fileName} {
+      // همه‌ی کاربران عضو (کارجوها و مدیر) می‌توانند رسانه‌ی آگهی را ببینند
+      allow read: if isSignedIn();
+
+      // فقط مدیر می‌تواند عکس/ویدیوی آگهی را بگذارد یا پاک کند
+      allow write: if isAdmin() && isImageOrVideoUpTo25Mb();
+    }
+
+    // بقیه‌ی مسیرها بسته است
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

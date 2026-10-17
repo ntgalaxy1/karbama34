@@ -1,0 +1,29 @@
+# ---------- ساخت و ابزار ----------
+Karbama/app/build/
+Karbama/.gradle/
+Karbama/build/
+Karbama/local.properties
+Karbama/app/google-services.json
+
+# ---------- خروجی‌های موقت / کش ----------
+.cache/
+.npm/
+.local/
+.android/
+.config/
+__pycache__/
+*.pyc
+.DS_Store
+
+# ---------- باینری‌های سنگین ----------
+# فایل‌های APK در مخزن نگه داشته نمی‌شوند؛ به‌عنوان Release در گیت‌هاب آپلود شوند.
+download/*.apk
+*.apk
+*.aab
+*.bundle
+
+# ---------- خروجی‌های تولیدشده ----------
+kb-tools/demo.js
+kb-tools/run-*.js
+kb-tools/shots/
+.sudo_as_admin_successful

@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// ==========================================================
+//  قواعد امنیتی Firestore — کارباما / Karbama
+//  در Firebase Console → Firestore → Rules این متن را جای‌گذاری و Publish کن.
+// ==========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // مدیر کسی است که سندش در مجموعه‌ی admins باشد
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ---------- آگهی‌های استخدام ----------
+    // همه می‌توانند بخوانند (حتی بدون ورود)، ولی فقط مدیر می‌تواند ثبت/ویرایش/حذف کند.
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---------- متقاضیان ----------
+    // هر کس فقط پروفایل خودش را می‌سازد و می‌خواند؛ مدیر همه را می‌بیند.
+    match /applicants/{uid} {
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      // #34: تأیید پرداخت («paid») فقط با مدیر است؛ کارجو حداکثر می‌تواند وضعیت را از
+      // «چیزی» به «pending / خالی» ببرد و هیچ‌وقت خودش را پرداخت‌شده اعلام کند.
+      allow update: if isSignedIn() && (isAdmin() || (
+                      request.auth.uid == uid && (
+                        !(request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(["paymentStatus", "paymentAt"]))
+                        || (request.resource.data.paymentStatus in ["", "pending", "paid"]
+                            && (request.resource.data.paymentStatus != "paid"
+                                || resource.data.paymentStatus == "paid"))
+                      )));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- #29: پسندیده‌ها (likes) و درخواست‌های ارسالی (applications) ----------
+    // شناسه‌ی هر سند: {شناسه‌ی متقاضی}_{شناسه‌ی آگهی}  → نوشتن دوباره رکورد تکراری نمی‌سازد.
+    // هر سند فیلد applicantId دارد؛ فقط صاحب همان سند (یا مدیر) می‌تواند بنویسد/پاک کند.
+    match /likes/{docId} {
+      allow read: if isSignedIn();                       // کارجو و مدیر
+      allow create: if isSignedIn()
+                    && request.resource.data.applicantId == request.auth.uid;
+      allow delete: if isSignedIn()
+                    && (resource.data.applicantId == request.auth.uid || isAdmin());
+      allow update: if false;                            // فقط ساختن و پاک‌کردن
+    }
+
+    match /applications/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.applicantId == request.auth.uid;
+      allow delete: if isSignedIn()
+                    && (resource.data.applicantId == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // ---------- فهرست مدیران ----------
+    // هر مدیر فقط سند خودش را می‌خواند؛ نوشتن فقط از کنسول Firebase.
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // بقیه‌ی مسیرها بسته است
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

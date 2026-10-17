@@ -1,0 +1,301 @@
+dir	rtl
+flag	🇮🇷
+appName	کارباما
+latin	KARBAMA
+tagline	کاریابی مطمئن برای فارسی‌زبانان در ترکیه
+welcomeTitle	به کارباما خوش آمدید
+welcomeSub	آگهی‌های استخدام به‌روز از سراسر ترکیه، به همراه معرفی مستقیم شما به کارفرما و بدون واسطه
+startBtn	شروع ثبت‌نام
+iHaveAcc	ورود به برنامه
+browseOnly	فقط می‌خواهم آگهی‌ها را ببینم
+phoneCC	پیش‌شماره
+loginTitle	ورود به برنامه
+username	نام کاربری
+userPh	نام کاربری یا شماره تلفن
+passPh	رمز عبور
+userHint	فقط حروف و اعداد انگلیسی (بدون فاصله) — با همین وارد می‌شوید
+passHint	حداقل ۴ کاراکتر
+passShort	رمز عبور باید حداقل ۴ کاراکتر باشد
+nid	کد ملی
+nidHint	۱۰ رقم، بدون خط تیره
+nidBad	کد ملی باید ۱۰ رقم باشد
+otherJobs	سایر حرفه‌ها
+otherJobsPh	اگر حرفه‌ی شما در فهرست بالا نیست، اینجا بنویسید
+otherJobsHint	اختیاری — چند حرفه را می‌توانید با کاما (،) جدا کنید
+und_feeEntryHint	مبلغ توافق‌شده را اینجا وارد کنید (لیر)
+und_feeWarn	مبلغ هزینه کارگزار را وارد کنید
+userTaken	این نام کاربری قبلاً گرفته شده است
+loginFail	نام کاربری یا رمز عبور اشتباه است
+welcomeBack	خوش آمدید
+noAccount	حساب ندارم — ثبت‌نام می‌کنم
+yesAccount	قبلاً ثبت‌نام کرده‌ام — ورود
+loginAsAdmin	ورود مدیر
+personalArea	قسمت شخصی من
+brokerHolder	نام کارگزار / دفتر
+und_cardHint	این شماره روی تعهدنامه‌ی متقاضیان چاپ می‌شود و قابل تغییر است.
+adminLoggedIn	شما به‌عنوان مدیر وارد شده‌اید
+ccHint	شماره را بدون صفر و پیش‌شماره وارد کنید؛ فقط شماره موبایل
+langTitle	زبان برنامه را انتخاب کنید
+langHint	Choose your language · Dil seçin
+fa	فارسی
+tr	Türkçe
+en	English
+regTitle	تکمیل مشخصات متقاضی
+regStep	مرحله {n} از {m}
+sIdentity	اطلاعات هویتی
+sContact	راه‌های تماس
+sLocation	محل سکونت
+sJob	شغل‌ها و تخصص‌های موردنظر
+sLang	میزان تسلط به ترکی استانبولی
+sDocs	بارگذاری مدارک
+sConsent	رضایت‌نامه
+firstName	نام
+lastName	نام خانوادگی
+phone	شماره تلفن
+email	ایمیل
+city	شهر
+district	منطقه
+select	انتخاب کنید
+selectCity	همه شهرهای ترکیه
+province	استان
+county	شهرستان
+address	آدرس کامل
+addressHint	خیابان، کوچه، پلاک، کد پستی
+sLocationIr	محل سکونت (ایران)
+pickJobs	حرفه‌ها را انتخاب کنید (چند مورد مجاز)
+jobFilterPh	جست‌وجوی حرفه...
+levelTitle	سطح زبان ترکی استانبولی شما چقدر است؟
+lv0	صفر — هیچ
+lv1	خیلی ضعیف
+lv2	ضعیف
+lv3	متوسط
+lv4	خوب
+lv5	عالی / نزدیک بومی
+fatherName	نام پدر
+docId	عکس پاسپورت
+docIdHint	صفحه‌ی اصلی پاسپورت، کامل و خوانا باشد
+docBody	عکس تمام‌قد (قدی)
+docBodyHint	ایستاده، تمام قد، پس‌زمینه ساده
+tapUpload	برای انتخاب عکس بزنید
+change	تغییر عکس
+uploaded	بارگذاری شد
+docNote	<b>نکات مهم عکس تمام‌قد:</b> خانم‌ها لطفاً بدون آرایش، آقایان بدون ریش بلند (حداکثر تُه‌ریش)، لباس مرتب و پوشیده. عکس باید واضح، تمام‌قد و بدون فیلتر باشد.
+consentTxt	با ثبت‌نام، با جمع‌آوری و نگهداری اطلاعات شخصی و مدارک من (فقط برای بررسی و معرفی به کارفرمای مرتبط) موافقم و تأیید می‌کنم اطلاعات وارد شده صحیح است.
+und_title	تعهدنامه تسویه حساب هزینه کارگزار
+und_residence	محل سکونت
+und_short	تعهدنامه
+und_required	خواندن و امضای تعهدنامه الزامی است
+und_open	مشاهده و امضای تعهدنامه
+und_reopen	مشاهده تعهدنامه امضاشده
+und_signed	امضا شد
+und_notsigned	امضا نشده
+und_intro	برای تکمیل ثبت‌نام باید متن تعهدنامه را ببینی و آن را امضا کنی. این تعهدنامه درباره هزینه خدمات کارگزار و حدود مسئولیت اوست.
+und_needDocs	اول هر دو عکس (کارت ملی و عکس قدی) را بارگذاری کن
+und_father	فرزند
+und_nationalId	شماره ملی
+und_payerCard	شماره کارت واریزکننده
+und_brokerCard	شماره کارت بانکی کارگزار
+und_brokerCardEmpty	— (بعداً توسط مدیریت ثبت می‌شود)
+und_fee	مبلغ هزینه کارگزار
+und_signature	محل امضاء متقاضی
+und_signHint	اینجا امضا کن — با انگشت روی گوشی یا با ماوس
+und_clear	پاک کردن
+und_saveSig	ثبت امضا
+und_confirm	تأیید نهایی تعهدنامه
+und_date	تاریخ عقد قرارداد
+und_idAttach	محل الصاق / اسکن کارت شناسایی
+und_noId	عکس کارت شناسایی در مرحله‌ی مدارک بارگذاری نشده است
+und_fill	این موارد را کامل کن:
+und_signFirst	اول امضا کن
+und_doneOk	تعهدنامه ثبت و امضا شد
+und_print	چاپ / ذخیره PDF
+und_printHint	در مرورگر خودت با Ctrl+P قابل چاپ است
+und_originalNote	متن اصلی این تعهدنامه به زبان فارسی است.
+und_details	مشخصات طرفین و پرداخت
+und_payment	اطلاعات پرداخت
+und_adminSettings	تنظیمات کارگزار
+und_adminFee	مبلغ هزینه کارگزار (لیر)
+und_adminCard	شماره کارت بانکی کارگزار
+und_adminHint	این‌ها در متن تعهدنامه‌ی متقاضیان نمایش داده می‌شوند.
+und_personFee	مبلغ این متقاضی (لیر)
+und_personFeeHint	این مبلغ فقط برای همین شخص در متن تعهدنامه‌اش نوشته می‌شود؛ مبلغ پیش‌فرض در تب «تنظیمات» است.
+und_defaultFee	مبلغ پیش‌فرض
+und_sigThumb	تصویر امضا
+und_nationalWarn	شماره ملی باید ۸ تا ۱۰ رقم باشد
+und_cardWarn	شماره کارت باید ۱۶ رقم باشد
+und_tabSettings	تنظیمات
+next	مرحله بعد
+back	قبلی
+submit	ارسال و ثبت‌نام
+required	این فیلد الزامی است
+badPhone	شماره موبایل ترکیه صحیح نیست (مثال: 0532 123 45 67)
+badPhoneIr	شماره موبایل ایران صحیح نیست (مثال: 0912 345 6789)
+badMail	ایمیل صحیح نیست
+pickJob	حداقل یک حرفه انتخاب کنید
+needDocs	بارگذاری هر دو عکس الزامی است
+needConsent	تأیید رضایت‌نامه الزامی است
+successT	ثبت‌نام با موفقیت انجام شد ✅
+successS	پروفایل شما ساخته شد.
+successToast	ثبت‌نام با موفقیت انجام شد — پروفایل شما ساخته شد
+goHome	ورود به صفحه اصلی
+cityFirst	اول شهر را انتخاب کنید
+greetings	آگهی‌های استخدام
+searchPh	جست‌وجو بر اساس عنوان شغلی...
+allCities	همه شهرها
+allDistricts	همه مناطق
+nearest	جدیدترین
+salaryHigh	بیشترین حقوق
+salaryLow	کمترین حقوق
+found	{n} آگهی یافت شد
+noJobs	آگهی‌ای با این فیلترها پیدا نشد
+noJobsSub	فیلترها را تغییر دهید یا عبارت دیگری جست‌وجو کنید
+clear	پاک کردن فیلترها
+apply	ارسال درخواست
+applied	✓ درخواست ارسال شد
+salary	حقوق
+company	کارفرما
+date	تاریخ انتشار
+cond	شرایط
+districtL	منطقه
+desc	توضیحات آگهی
+req	شرایط و مهارت‌های لازم
+contact	اطلاعات تماس
+justNow	همین حالا
+mAgo	{n} دقیقه پیش
+hAgo	{n} ساعت پیش
+dAgo	{n} روز پیش
+fullTime	تمام‌وقت
+partTime	نیمه‌وقت
+shift	شیفتی / نوبتی
+contract	پیمانکاری
+weekend	آخر هفته تعطیل
+ins	بیمه دارد
+meal	غذا و ایاب‌وذهاب
+tabJobs	آگهی‌ها
+tabProfile	پروفایل من
+tabAdmin	مدیریت
+tabSaved	ذخیره‌ها
+tabContact	ارتباط با ما
+adm_user	یوزرنیم مدیر
+adm_pass	پسورد مدیر
+adm_hint	با این یوزرنیم و پسورد وارد پنل مدیریت می‌شوید. بعد از ذخیره، ورود با همین مقادیر تازه انجام می‌شود.
+adm_empty	یوزرنیم و پسورد نمی‌توانند خالی باشند
+adm_saved	یوزرنیم و پسورد مدیر ذخیره شد
+pass_show	نمایش رمز
+pass_hide	پنهان‌کردن رمز
+pass_note_shown	رمز الان روی صفحه دیده می‌شود — مراقب باشید کسی نبیند.
+twofa_title	ورود دومرحله‌ای (2FA)
+twofa_hint	با فعال‌کردن این گزینه، بعد از یوزرنیم و پسورد یک کد ۶ رقمی هم پرسیده می‌شود که برنامه‌ی Authenticator روی گوشی شما می‌سازد (Google Authenticator، Authy و…).
+twofa_enable	فعال‌سازی ورود دومرحله‌ای
+twofa_disable	غیرفعال‌کردن ورود دومرحله‌ای
+twofa_scan	این کلید را در برنامه‌ی Authenticator خودتان اضافه کنید (کد دستی):
+twofa_code	کد ۶ رقمی برنامه
+twofa_confirm	تأیید و فعال‌سازی
+twofa_verify	تأیید و ورود
+twofa_on	فعال است
+twofa_off	غیرفعال است
+twofa_show	نمایش
+twofa_hide	پنهان‌کردن
+twofa_copy	کپی کلید
+twofa_recovery	کد بازیابی (یک‌بارمصرف)
+twofa_recovery_note	اگر گوشی یا برنامه‌ی Authenticator را از دست دادید با این کد وارد شوید؛ بعد از استفاده، ورود دومرحله‌ای خودش خاموش می‌شود.
+twofa_wrong	کد واردشده درست نیست؛ کد تازه‌ی برنامه را وارد کنید
+twofa_step_title	تأیید دومرحله‌ای
+twofa_step_hint	کد ۶ رقمی برنامه‌ی Authenticator را وارد کنید (یا کد بازیابی).
+twofa_back	بازگشت به مرحله‌ی اول
+twofa_demo_tag	🔎 دمو: کد فعلی برنامه (در نسخه‌ی واقعی، کد از برنامه‌ی Authenticator گوشی خوانده می‌شود)
+twofa_recovery_now	کد بازیابی با موفقیت استفاده شد؛ ورود دومرحله‌ای خاموش شد
+yes	بله
+first_name	نام
+last_name	نام خانوادگی
+adm_personal	مشخصات فردی
+adm_skills	تخصص و زبان
+adm_filterTitle	تفکیک متقاضیان بر اساس وضعیت
+adm_filterHint	روی هر وضعیت بزنید تا فقط همان گروه نشان داده شود؛ دوباره بزنید تا فیلتر برداشته شود.
+adm_openHint	برای دیدن مشخصات کامل، روی هر متقاضی بزنید
+adm_total	کل متقاضیان
+adm_back	بازگشت به فهرست متقاضیان
+mediaTitle	عکس‌ها و ویدیوهای آگهی
+mediaHint	برای بزرگ شدن، روی عکس یا ویدیو بزنید
+mediaAdminHint	می‌توانی برای این آگهی عکس و ویدیو بگذاری؛ کارجو آن‌ها را کنار مشخصات آگهی می‌بیند و با یک لمس تمام‌صفحه و بزرگ می‌شود.
+mediaEmpty	هنوز عکس یا ویدیویی اضافه نشده است
+mediaAddSample	افزودن عکس نمونه
+mediaAddFile	افزودن عکس/ویدیو از گوشی
+mediaAddLink	افزودن با لینک
+mediaAddConfirm	افزودن
+mediaLinkLabel	آدرس عکس یا ویدیو
+mediaPhoto	عکس
+mediaVideo	ویدیو
+mediaIndex	{a} از {b}
+mediaCounts	{a} عکس · {b} ویدیو
+mediaZoomHint	با دو انگشت بزرگ/کوچک کنید، با دو ضربه بزرگ‌نمایی و با کشیدن جابه‌جا کنید — برای بستن ✕
+mediaVideoHint	ویدیوی آگهی در حال پخش است — برای بستن ✕ را بزنید
+mediaRemove	حذف از آگهی
+mediaAdded	به رسانه‌های آگهی اضافه شد
+mediaNoFile	فایلی انتخاب نشد
+contactNoBranch	ما هیچ شعبه یا نماینده‌ای نداریم
+contactOnly	تنها راه‌های ارتباطی گذاشته شده است
+contactTg	کانال تلگرام
+contactWa	واتس‌اپ
+contactIg	پیج اینستاگرام
+contactTap	روی هر نقطه‌ای از هر کارت بزنید؛ اگر آن برنامه روی گوشی شما نصب باشد، خودِ برنامه باز می‌شود و مستقیم وارد همان کانال/چت/پیج می‌شوید — اگر نصب نباشد، لینک در مرورگر باز می‌شود. با دکمه‌ی «کپی» هم می‌توانید لینک را بردارید
+contactCopy	کپی
+contactCopied	لینک کپی شد
+contactFrame	داخل قابِ پیش‌نمایش، باز کردن برنامه‌های دیگر ممکن نیست — «کپی» را بزنید یا فایل را در مرورگر گوشی/کامپیوتر باز کنید تا با یک کلیک، خودِ تلگرام/واتس‌اپ/اینستاگرام باز شود
+myProfile	پروفایل من
+editInfo	ویرایش اطلاعات
+logout	خروج از حساب
+adminEntry	ورود مدیر
+adminHint	رمز پیش‌فرض: karbama2026
+myDocs	مدارک من
+langLevel	سطح ترکی استانبولی
+myJobs	تخصص‌های من
+myApps	درخواست‌های ارسال‌شده
+settings	تنظیمات
+language	زبان برنامه
+adminLoginT	ورود مدیر
+password	رمز عبور
+login	ورود
+wrongPass	رمز عبور اشتباه است
+adminPanel	پنل مدیریت
+tabJobsA	آگهی‌ها
+tabPeople	متقاضیان
+addJob	آگهی جدید
+editJob	ویرایش آگهی
+jobName	عنوان شغل
+salaryMin	حقوق (هزار تومان ترک)
+districtPh	منطقه
+all	همه
+save	ذخیره
+cancel	لغو
+del	حذف
+delConfirm	این آگهی حذف شود؟
+saved	ذخیره شد
+deleted	حذف شد
+delConfirmTitle	حذف آگهی
+delSure	آیا مطمئن هستید؟ این آگهی برای همیشه حذف می‌شود و برگشتی ندارد.
+delYes	بله، حذف شود
+delNo	انصراف
+peopleSearch	جست‌وجو: نام، تخصص، شهر...
+filterSpec	تخصص
+filterCity	شهر
+filterLang	حداقل سطح ترکی
+status	وضعیت متقاضی
+stNew	جدید
+stRev	بررسی‌شده
+stRef	معرفی‌شده به کارفرما
+setStatus	تغییر وضعیت
+docs	مدارک و عکس‌ها
+idCard	پاسپورت
+fullBody	عکس قدی
+onlyAdmin	مشاهده مدارک فقط برای مدیران مجاز
+phoneL	تلفن
+mailL	ایمیل
+residential	محل سکونت
+stats	آمار
+totalJobs	آگهی فعال
+totalPeople	متقاضی
+freshToday	امروز
+close	بستن
+emptyPeople	متقاضی‌ای یافت نشد
+emptyJobs	هنوز آگهی‌ای ثبت نشده

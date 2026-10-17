@@ -1,0 +1,30 @@
+{
+  "_راهنما": "این فایل نمونه است. فایل واقعی را از Firebase Console دانلود کن و با نام google-services.json در همین پوشه (app/) بگذار. تا وقتی این فایل نباشد، برنامه در «حالت نمایشی» با داده‌های نمونه کار می‌کند.",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "karbama-XXXXX",
+    "storage_bucket": "karbama-XXXXX.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.karbama.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
