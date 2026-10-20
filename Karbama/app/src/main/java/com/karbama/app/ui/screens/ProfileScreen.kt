@@ -106,20 +106,8 @@ fun ProfileContent(
                     color = Color.White
                 )
             } else {
-                Box(
-                    modifier = Modifier
-                        .size(76.dp)
-                        .clip(CircleShape)
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        initials(applicant.fullName),
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Black,
-                        color = BrandDark
-                    )
-                }
+                // v50: عکس ثبت‌نام = عکس پروفایل
+                ApplicantAvatar(applicant = applicant, size = 76.dp)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     applicant.fullName,

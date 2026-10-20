@@ -53,10 +53,10 @@ service cloud.firestore {
           ]);
       }
 
+      // Valid manual payment request
       function validManualRequest() {
         return resource.data.get("paymentStatus", "") != "paid"
-          && request.resource.data.get("paymentStatus", "")
-               in ["", "pending"]
+          && request.resource.data.get("paymentStatus", "") == "pending"
           && request.resource.data.diff(resource.data)
                .affectedKeys()
                .hasOnly([
@@ -65,25 +65,25 @@ service cloud.firestore {
                  "paymentReference",
                  "paymentReceiptUrl"
                ])
-          && (
-            request.resource.data.get("paymentStatus", "") != "pending"
-            || (
-              request.resource.data.get("paymentMethod", "") == "manual"
-              && request.resource.data.get("paymentReference", null)
-                   is string
-              && request.resource.data.paymentReference.size() >= 3
-              && request.resource.data.paymentReference.size() <= 32
-              && request.resource.data.get("paymentReceiptUrl", null)
-                   is string
-              && request.resource.data.paymentReceiptUrl.size() > 0
-            )
-          );
+          && request.resource.data.get("paymentMethod", "") == "manual"
+          && request.resource.data.get("paymentReference", null)
+               is string
+          && request.resource.data.paymentReference.size() >= 3
+          && request.resource.data.paymentReference.size() <= 32
+          && request.resource.data.get("paymentReceiptUrl", null)
+               is string
+          && request.resource.data.paymentReceiptUrl.size() > 0;
       }
 
       // Applicant creates own profile
+      // Payment fields may only be absent or empty on create (the app sends ""),
+      // and paymentAt is never allowed (admin only).
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.get("paymentStatus", "") == ""
+        && request.resource.data.get("paymentMethod", "") == ""
+        && request.resource.data.get("paymentReference", "") == ""
+        && request.resource.data.get("paymentReceiptUrl", "") == ""
         && !request.resource.data.keys().hasAny([
           "paymentAt"
         ]);
@@ -92,7 +92,7 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && (request.auth.uid == uid || isAdmin());
 
-      // Admin can update; applicant has restricted updates
+      // Admin can update; applicant has restricted payment updates
       allow update: if isSignedIn()
         && (
           isAdmin()
@@ -203,11 +203,67 @@ service cloud.firestore {
         && (request.auth.uid == uid || isAdmin());
     }
 
+    // Duplicate registration prevention
+    // Key format: nid_<sha256> or ph_<sha256>
+    // Fields: owner, kind, createdAt
+    match /uniqueKeys/{key} {
+
+      function validKey() {
+        return request.resource.data.keys().hasOnly([
+            "owner",
+            "kind",
+            "createdAt"
+          ])
+          && request.resource.data.keys().hasAll([
+            "owner",
+            "kind",
+            "createdAt"
+          ])
+          && request.resource.data.owner == request.auth.uid
+          && (
+            (
+              request.resource.data.kind == "nid"
+              && key.matches("nid_[0-9a-f]{64}")
+            )
+            || (
+              request.resource.data.kind == "phone"
+              && key.matches("ph_[0-9a-f]{64}")
+            )
+          );
+      }
+
+      // Any signed-in user may check whether ONE key exists (needed for the
+      // "already registered" message during registration). The document only
+      // holds a hash + owner uid; listing all keys is admin-only.
+      allow get: if isSignedIn();
+
+      // Only admin may list keys
+      allow list: if isAdmin();
+
+      // Create a key owned by the authenticated user
+      allow create: if isSignedIn()
+        && validKey();
+
+      // Owner may update only their own key
+      allow update: if isSignedIn()
+        && resource.data.owner == request.auth.uid
+        && validKey()
+        && request.resource.data.kind == resource.data.kind;
+
+      // Owner or admin may delete
+      allow delete: if isSignedIn()
+        && (
+          resource.data.owner == request.auth.uid
+          || isAdmin()
+        );
+    }
+
     // Admin documents
     match /admins/{uid} {
       allow read: if isSignedIn()
         && request.auth.uid == uid;
 
+      // Admin documents cannot be changed by client SDK
       allow write: if false;
     }
 

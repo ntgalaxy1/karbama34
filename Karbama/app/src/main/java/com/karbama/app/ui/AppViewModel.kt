@@ -109,6 +109,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             myProfile = remote
             prefs.registered = true
             prefs.saveMyProfile(remote)
+            // v50: کارجوهای قبلی هم کد ملی/تلفنشان ثبت شود تا تکراری‌ها شناخته شوند
+            runCatching { withContext(Dispatchers.IO) { applicantRepo.claimKeys(remote) } }
+        }
+    }
+
+    /** v50: آیا کد ملی / شماره تلفن قبلاً ثبت شده؟ → cb(nidTaken, phoneTaken) */
+    fun checkUnique(nid: String, phone: String, cb: (Boolean, Boolean) -> Unit) {
+        viewModelScope.launch {
+            val r = runCatching {
+                withContext(Dispatchers.IO) { applicantRepo.checkUnique(nid, phone) }
+            }.getOrDefault(Pair(false, false))
+            cb(r.first, r.second)
         }
     }
 
@@ -132,7 +144,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.saveMyProfile(saved)
                 onDone(saved)
             }.onFailure {
-                message = "⚠️ " + friendlyError(it, "err_register_failed")   // v47
+                message = if (it is ApplicantRepository.DuplicateException)   // v50
+                    "⚠️ " + loc()[if (it.kind == "nid") "dup_nid" else "dup_phone"]
+                else "⚠️ " + friendlyError(it, "err_register_failed")   // v47
             }
         }
     }
@@ -140,7 +154,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveMyProfile(applicant: Applicant, onDone: () -> Unit = {}) {
         viewModelScope.launch {
             busy = true
+            // v50: شماره‌ی جدید نباید مال کارجوی دیگری باشد
+            val old = myProfile
+            val phoneChanged = old != null &&
+                old.phone.filter { it.isDigit() } != applicant.phone.filter { it.isDigit() }
+            if (phoneChanged) {
+                val taken = runCatching {
+                    withContext(Dispatchers.IO) { applicantRepo.checkUnique("", applicant.phone) }.second
+                }.getOrDefault(false)
+                if (taken) {
+                    busy = false
+                    message = "⚠️ " + loc()["dup_phone"]
+                    return@launch
+                }
+            }
             applicantRepo.updateMyProfile(applicant)
+            if (phoneChanged) runCatching {
+                withContext(Dispatchers.IO) {
+                    applicantRepo.claimKeys(applicant)
+                    applicantRepo.releasePhoneKey(old!!.phone)
+                }
+            }
             myProfile = applicant
             prefs.saveMyProfile(applicant)
             busy = false

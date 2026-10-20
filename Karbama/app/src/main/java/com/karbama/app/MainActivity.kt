@@ -153,7 +153,8 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                                 }
                             }
                         },
-                        onBack = { nav.popBackStack() }
+                        onBack = { nav.popBackStack() },
+                        checkUnique = { nid, ph, cb -> vm.checkUnique(nid, ph, cb) }   // v50
                     )
                 }
 

@@ -474,7 +474,8 @@ fun KbField(
     enabled: Boolean = true,
     password: Boolean = false,
     prefix: String? = null,
-    revealable: Boolean = true
+    revealable: Boolean = true,
+    ltr: Boolean = keyboardType == KeyboardType.Phone   // v50: شماره تلفن چپ‌چین (+90 در چپ)
 ) {
     var revealed by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxWidth()) {
@@ -484,6 +485,11 @@ fun KbField(
             color = Ink2,
             modifier = Modifier.padding(bottom = 8.dp)
         )
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalLayoutDirection provides
+                if (ltr) androidx.compose.ui.unit.LayoutDirection.Ltr
+                else androidx.compose.ui.platform.LocalLayoutDirection.current
+        ) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -505,7 +511,10 @@ fun KbField(
                     )
                 }
             },
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = if (ltr) MaterialTheme.typography.bodyLarge.copy(
+                textAlign = androidx.compose.ui.text.style.TextAlign.Left,
+                textDirection = androidx.compose.ui.text.style.TextDirection.Ltr
+            ) else MaterialTheme.typography.bodyLarge,
             shape = MaterialTheme.shapes.medium,
             visualTransformation = if (password && !revealed) PasswordVisualTransformation()
             else VisualTransformation.None,
@@ -536,6 +545,7 @@ fun KbField(
                 cursorColor = Brand
             )
         )
+        }
         if (error != null) {
             Text(
                 text = error,
@@ -955,6 +965,51 @@ fun CloseIconButton(onClick: () -> Unit) {
 }
 
 /** مسیر عکس را به مدل قابل‌نمایش برای Coil تبدیل می‌کند (فایل محلی یا آدرس اینترنتی) */
+/**
+ * v50: آواتار کارجو = همان عکسی که هنگام ثبت‌نام فرستاده (عکس تمام‌قد، از بالا برش می‌خورد تا صورت دیده شود).
+ * تا عکس برسد — یا اگر نبود — حروف اول نام نمایش داده می‌شود.
+ */
+@Composable
+fun ApplicantAvatar(
+    applicant: com.karbama.app.data.model.Applicant,
+    size: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+    background: androidx.compose.ui.graphics.Brush =
+        androidx.compose.ui.graphics.SolidColor(Color.White),
+    initialsColor: Color = BrandDark,
+    fontSize: androidx.compose.ui.unit.TextUnit = 26.sp
+) {
+    val model = photoModel(applicant.bodyPhotoUrl) ?: photoModel(applicant.idPhotoUrl)
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            initialsOf(applicant.fullName),
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            color = initialsColor
+        )
+        if (model != null) {
+            coil.compose.AsyncImage(
+                model = model,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+private fun initialsOf(name: String): String =
+    name.trim().split(" ").filter { it.isNotEmpty() }.take(2)
+        .joinToString("") { it.first().uppercase() }
+        .ifEmpty { "?" }
+
 fun photoModel(path: String): Any? = when {
     path.isBlank() -> null
     path.startsWith("/") -> java.io.File(path)

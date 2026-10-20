@@ -1003,20 +1003,13 @@ fun ApplicantDetailScreen(
             // ---------- مشخصات ----------
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(58.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(Purple, Brand))),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            initials(applicant.fullName),
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 20.sp
-                        )
-                    }
+                    ApplicantAvatar(                       // v50: عکس ثبت‌نام
+                        applicant = applicant,
+                        size = 58.dp,
+                        background = Brush.linearGradient(listOf(Purple, Brand)),
+                        initialsColor = Color.White,
+                        fontSize = 20.sp
+                    )
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(applicant.fullName, style = MaterialTheme.typography.titleMedium)

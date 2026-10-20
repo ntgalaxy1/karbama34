@@ -60,7 +60,9 @@ fun RegistrationScreen(
     brokerCard: String,
     brokerHolder: String,
     onSubmit: (Applicant, ByteArray?, ByteArray?, Undertaking?) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    // v50: بررسی تکراری‌بودن کد ملی/شماره تلفن → (nidTaken, phoneTaken)
+    checkUnique: (String, String, (Boolean, Boolean) -> Unit) -> Unit = { _, _, cb -> cb(false, false) }
 ) {
     SystemBars(darkIcons = true)
 
@@ -91,6 +93,9 @@ fun RegistrationScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     val scroll = rememberScrollState()
+    var nidTaken by remember { mutableStateOf(false) }      // v50
+    var phoneTaken by remember { mutableStateOf(false) }    // v50
+    var checking by remember { mutableStateOf(false) }      // v50
 
     fun validate(current: Int): String? = when (current) {
         1 -> when {
@@ -101,6 +106,7 @@ fun RegistrationScreen(
             LocalStore.findByUsername(username) != null -> loc["username_taken"]
             !AuthUtils.passwordIsValid(password) -> loc["password_short"]
             !PhoneUtils.isValid(phoneCountry, phone) -> loc[phoneErrorKey(phoneCountry)]
+            gender != "m" && gender != "f" -> loc["err_gender"]          // v50: الزامی
             else -> null
         }
         2 -> if (city.isBlank() || district.isBlank()) loc["err_city"]
@@ -188,12 +194,30 @@ fun RegistrationScreen(
                     }
                     PrimaryButton(
                         text = if (step < TOTAL_STEPS) loc["next"] else loc["submit_app"],
-                        loading = busy,
+                        loading = busy || checking,
                         modifier = Modifier.weight(1f),
                         onClick = {
+                            if (checking) return@PrimaryButton
                             val err = validate(step)
                             error = err
-                            if (err == null) {
+                            if (err == null && step == 1) {
+                                // v50: کد ملی یا شماره تکراری → «از قبل عضو شده‌اید»
+                                checking = true
+                                checkUnique(
+                                    FormatUtils.digitsOnly(nationalId, 10),
+                                    PhoneUtils.format(phoneCountry, phone).filter { it.isDigit() }
+                                ) { n, p ->
+                                    checking = false
+                                    nidTaken = n
+                                    phoneTaken = p
+                                    error = when {
+                                        n -> loc["dup_nid"]
+                                        p -> loc["dup_phone"]
+                                        else -> null
+                                    }
+                                    if (!n && !p) step++
+                                }
+                            } else if (err == null) {
                                 if (step < TOTAL_STEPS) step++ else {
                                     onSubmit(
                                         Applicant(
@@ -275,10 +299,12 @@ fun RegistrationScreen(
                                 value = nationalId,
                                 onValueChange = {
                                     nationalId = FormatUtils.digitsOnly(it, 10)
+                                    nidTaken = false
                                 },
                                 label = loc["national_id"],
                                 placeholder = "0079123456",
                                 required = true,
+                                error = if (nidTaken) loc["dup_nid"] else null,
                                 keyboardType = KeyboardType.Number,
                                 modifier = Modifier.weight(1f)
                             )
@@ -324,16 +350,17 @@ fun RegistrationScreen(
                             country = phoneCountry,
                             uiLang = loc.code,
                             searchPlaceholder = loc["search_country"],
-                            onSelect = { phoneCountry = it; error = null }
+                            onSelect = { phoneCountry = it; error = null; phoneTaken = false }
                         )
                         Spacer(Modifier.height(12.dp))
                         KbField(
                             value = phone,
-                            onValueChange = { phone = it },
+                            onValueChange = { phone = it; phoneTaken = false },
                             label = loc["phone"],
                             placeholder = phoneCountry.example.ifEmpty { "123 456 789" },
                             prefix = "+" + phoneCountry.code,
                             required = true,
+                            error = if (phoneTaken) loc["dup_phone"] else null,
                             keyboardType = KeyboardType.Phone,
                             imeAction = ImeAction.Done
                         )
@@ -346,7 +373,7 @@ fun RegistrationScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     SectionCard {
-                        SectionTitle(loc["gender"])
+                        SectionTitle(loc["gender"] + " *")      // v50: الزامی
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SelectChip(
@@ -358,11 +385,6 @@ fun RegistrationScreen(
                                 text = loc["gender_f"],
                                 selected = gender == "f",
                                 onClick = { gender = "f" }
-                            )
-                            SelectChip(
-                                text = loc["all"] + " / -",
-                                selected = gender == "",
-                                onClick = { gender = "" }
                             )
                         }
                     }
