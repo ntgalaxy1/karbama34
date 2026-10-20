@@ -18,6 +18,25 @@ import kotlinx.coroutines.tasks.await
 class ApplicantRepository {
 
     /**
+     * برگرداندن کاربر معتبر برای «ثبت‌نام تازه».
+     * هیچ رمز یا شناسه‌ای ذخیره/گزارش نمی‌شود؛ فقط Firebase Auth را از سرور refresh می‌کند.
+     */
+    private suspend fun freshRegistrationUser(auth: com.google.firebase.auth.FirebaseAuth): com.google.firebase.auth.FirebaseUser {
+        auth.currentUser?.let { current ->
+            try {
+                // forceRefresh=true → اگر نشست حذف/منقضی شده، اینجا به‌جای Firestore معلوم می‌شود.
+                current.getIdToken(true).await()
+                return current
+            } catch (_: Exception) {
+                // نشست منقضی/حذف‌شده را پاک می‌کنیم؛ سپس پایین یک نشست تازه می‌سازیم.
+                runCatching { auth.signOut() }
+            }
+        }
+        return auth.signInAnonymously().await().user
+            ?: throw IllegalStateException("anonymous auth failed")
+    }
+
+    /**
      * ثبت‌نام متقاضی.
      * در حالت متصل: ورود ناشناس + ذخیره‌ی دو عکس در Firestore (v48) + ثبت سند در Firestore
      * در حالت نمایشی: ذخیره روی خود گوشی
@@ -46,8 +65,13 @@ class ApplicantRepository {
 
         // ---------- حالت متصل ----------
         return runCatching {
-            val user = auth.currentUser ?: auth.signInAnonymously().await().user
-            val uid = user?.uid ?: throw IllegalStateException("auth failed")
+            // v52.0.3: یک نشست ناشناسِ باقی‌مانده روی گوشی ممکن است بعد از حذف/انقضای
+            // حساب Firebase نامعتبر باشد. در آن وضعیت `currentUser` هنوز غیرnull است،
+            // اما Firestore با PERMISSION_DENIED جواب می‌دهد. پیش از هر آپلود و نوشتن،
+            // توکن را از سرور تازه می‌کنیم؛ اگر نامعتبر بود، نشست قبلی را کنار می‌گذاریم
+            // و یک مالک ناشناسِ تازه می‌گیریم. بنابراین uid فایل‌ها و پرونده یکی می‌ماند.
+            val user = freshRegistrationUser(auth)
+            val uid = user.uid
 
             // v50: بررسی دوباره‌ی تکراری‌بودن، پیش از آپلود عکس‌ها
             val (nidTaken, phoneTaken) = checkUnique(applicant.nationalId, applicant.phone)
