@@ -79,7 +79,8 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon -Pkbshots testDebugUnitTest assembleDebug
+          mkdir -p "$GITHUB_WORKSPACE/kb-tools/shots"
+          ./gradlew --no-daemon -Pkbshots -Dkbshots.dir="$GITHUB_WORKSPACE/kb-tools/shots" testDebugUnitTest assembleDebug
 
       - name: Prepare verified release asset
         id: asset
