@@ -1,0 +1,128 @@
+name: Android release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v52.0.4 (must match app versionName)"
+        required: true
+        type: string
+      dry_run:
+        description: "Build and test only; do not create or modify a Release"
+        required: false
+        default: false
+        type: boolean
+
+# The workflow receives no broader permissions than needed to create a tag/release
+# and upload the APK to this repository.
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build, test, and publish APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check out the exact release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      # Neither input is kept in Git. The keystore is restored at Android's normal
+      # debug-keystore location, preserving the signer used by existing releases.
+      - name: Restore Firebase configuration and signing key
+        env:
+          KARBAMA_GOOGLE_SERVICES_JSON_B64: ${{ secrets.KARBAMA_GOOGLE_SERVICES_JSON_B64 }}
+          KARBAMA_DEBUG_KEYSTORE_B64: ${{ secrets.KARBAMA_DEBUG_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KARBAMA_GOOGLE_SERVICES_JSON_B64" || { echo "Missing Firebase configuration secret."; exit 1; }
+          test -n "$KARBAMA_DEBUG_KEYSTORE_B64" || { echo "Missing Android signing-key secret."; exit 1; }
+
+          mkdir -p "$HOME/.android"
+          printf '%s' "$KARBAMA_GOOGLE_SERVICES_JSON_B64" | base64 --decode > Karbama/app/google-services.json
+          printf '%s' "$KARBAMA_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 Karbama/app/google-services.json "$HOME/.android/debug.keystore"
+
+      - name: Confirm tag and Android version match
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag must look like v52.0.4"; exit 1; }
+          APP_VERSION="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' Karbama/app/build.gradle.kts | head -n 1)"
+          test -n "$APP_VERSION" || { echo "versionName was not found."; exit 1; }
+          test "v$APP_VERSION" = "$RELEASE_TAG" || {
+            echo "Tag $RELEASE_TAG does not match Android versionName $APP_VERSION."
+            exit 1
+          }
+
+      - name: Test and build APK
+        working-directory: Karbama
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+
+      - name: Prepare verified release asset
+        id: asset
+        run: |
+          set -euo pipefail
+          APK="Karbama/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK" || { echo "APK was not produced."; exit 1; }
+          mkdir -p release
+          ASSET="release/Karbama-${RELEASE_TAG}.apk"
+          cp "$APK" "$ASSET"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$ASSET" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$ASSET" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "bytes=$(stat -c '%s' "$ASSET")" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release and upload APK
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET: ${{ steps.asset.outputs.asset }}
+          MD5: ${{ steps.asset.outputs.md5 }}
+          SHA256: ${{ steps.asset.outputs.sha256 }}
+          BYTES: ${{ steps.asset.outputs.bytes }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "A release for $RELEASE_TAG already exists; it will not be overwritten."
+            exit 1
+          fi
+          cat > release-notes.md <<EOF
+          ## Android APK
+
+          - Package: com.karbama.app
+          - Version: ${RELEASE_TAG#v}
+          - Size: ${BYTES} bytes
+          - MD5: ${MD5}
+          - SHA-256: ${SHA256}
+
+          This APK was built and unit-tested by GitHub Actions from the tagged source.
+          EOF
+          gh release create "$RELEASE_TAG" "$ASSET#Karbama-${RELEASE_TAG}.apk" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Karbama $RELEASE_TAG" \
+            --notes-file release-notes.md \
+            --latest
