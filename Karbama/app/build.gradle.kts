@@ -20,8 +20,10 @@ android {
         applicationId = "com.karbama.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 50
-        versionName = "50.0.0"
+        // نسخه‌گذاری (به خواست کاربر از v52.0.1): هر نسخه‌ی تازه فقط عدد آخر +۱ → 52.0.2، 52.0.3 …
+        // versionCode هم هر بار +۱ (اندروید برای نصب به‌روزرسانی لازم دارد)
+        versionCode = 53
+        versionName = "52.0.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -86,4 +88,22 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
 
     debugImplementation(libs.androidx.ui.tooling)
+}
+
+// kbshots: JVM screenshot rendering (Robolectric) for comparing screens with karbama-demo.html.
+// Only active with -Pkbshots — never part of the APK build.
+if (project.hasProperty("kbshots")) {
+    android.testOptions.unitTests.isIncludeAndroidResources = true
+    android.testOptions.unitTests.all {
+        it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+        it.maxHeapSize = "1536m"
+        it.testLogging.showStandardStreams = true
+    }
+    dependencies {
+        add("testImplementation", "junit:junit:4.13.2")
+        add("testImplementation", "org.robolectric:robolectric:4.14.1")
+        add("testImplementation", platform(libs.androidx.compose.bom))
+        add("testImplementation", "androidx.compose.ui:ui-test-junit4")
+        add("debugImplementation", "androidx.compose.ui:ui-test-manifest")
+    }
 }
