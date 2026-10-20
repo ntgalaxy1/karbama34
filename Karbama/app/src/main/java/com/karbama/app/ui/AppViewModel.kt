@@ -210,7 +210,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val safe = if (value > 0L) value else Config.DEFAULT_ADS_FEE
         adsFee = safe
         prefs.adsFee = safe
-        message = "✅ " + safe
+        message = "✅ " + loc()["adm2_saved"]      // v51: مثل toast دمو
+    }
+
+    /** v51: «یوزرنیم مدیر» در تنظیمات = ایمیل حساب Firebase مدیرِ واردشده */
+    val adminEmail: String get() = AdminGate.currentEmail()
+
+    /**
+     * v51: تغییر رمز مدیر — مستقیم در Firebase Auth. رمز در Firestore یا جای دیگری نوشته نمی‌شود؛
+     * فقط اگر روی این دستگاه «ورود به خاطر سپرده» (Keystore) برای همین ایمیل بود، آن هم به‌روز می‌شود.
+     */
+    /** v52: onDone → "ok" | "need_current" (پنجره‌ی پسورد فعلی) | "wrong_current" | "fail" */
+    fun changeAdminPassword(newPass: String, currentPass: String? = null, onDone: (String) -> Unit = {}) {
+        val l = loc()
+        if (newPass.length < 6) {
+            message = "⚠️ " + l["adm_pass_short"]
+            onDone("fail")
+            return
+        }
+        viewModelScope.launch {
+            busy = true
+            val email = AdminGate.currentEmail()
+            val saved = prefs.rememberedLogin()
+            val remembered = saved?.takeIf { email.isNotEmpty() && it.username.equals(email, ignoreCase = true) }
+            val r = AdminGate.changePassword(newPass, remembered?.password, currentPass)
+            busy = false
+            when (r) {
+                AdminGate.PwResult.OK -> {
+                    if (remembered != null) prefs.saveRememberedLogin(remembered.username, newPass)
+                    message = "✅ " + l["adm_pass_changed"]
+                    onDone("ok")
+                }
+                AdminGate.PwResult.NEED_CURRENT -> onDone("need_current")
+                AdminGate.PwResult.WRONG_CURRENT -> { message = "⚠️ " + l["adm_cur_wrong"]; onDone("wrong_current") }
+                AdminGate.PwResult.WEAK -> { message = "⚠️ " + l["adm_pass_short"]; onDone("fail") }
+                AdminGate.PwResult.NETWORK -> { message = "⚠️ " + l["err_network"]; onDone("fail") }
+                AdminGate.PwResult.ERROR -> { message = "⚠️ " + l["adm_pass_failed"]; onDone("fail") }
+            }
+        }
     }
 
     /** مدیر همیشه آگهی‌ها را می‌بیند؛ کارجو تنها وقتی مدیر پرداختش را تأیید کرده باشد */

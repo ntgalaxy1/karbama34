@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karbama.app.data.model.Applicant
+import com.karbama.app.data.routes.Destinations
 import com.karbama.app.data.model.Condition
 import com.karbama.app.data.model.Contract
 import com.karbama.app.data.model.Job
@@ -463,6 +464,7 @@ fun EditProfileScreen(
     var city by remember { mutableStateOf(applicant.city) }        // استان
     var district by remember { mutableStateOf(applicant.district) } // شهرستان
     var address by remember { mutableStateOf(applicant.address) }
+    var destinationCountry by remember { mutableStateOf(Destinations.normalize(applicant.destinationCountry)) }
     val jobKeys = remember { mutableStateListOf<String>().apply { addAll(applicant.jobKeys) } }
     var spokenLangs by remember { mutableStateOf(applicant.spokenLangs) }   // v45
     var level by remember { mutableStateOf(applicant.trLevel) }
@@ -490,6 +492,7 @@ fun EditProfileScreen(
                                 firstName.isBlank() || lastName.isBlank() -> error = loc["required_field"]
                                 !PhoneUtils.isValid(phoneCountry, phone) ->
                                     error = loc[phoneErrorKey(phoneCountry)]
+                                destinationCountry.isBlank() -> error = loc["destination_required"]
                                 city.isBlank() -> error = loc["err_city"]
                                 jobKeys.isEmpty() -> error = loc["err_job"]
                                 else -> {
@@ -505,6 +508,7 @@ fun EditProfileScreen(
                                             city = city,
                                             district = district,
                                             address = address.trim(),
+                                            destinationCountry = destinationCountry,
                                             jobKeys = jobKeys.toList(),
                                             spokenLangs = spokenLangs,
                                             trLevel = level
@@ -612,6 +616,22 @@ fun EditProfileScreen(
                     singleLine = false,
                     minLines = 2
                 )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            SectionCard {
+                SectionTitle("🧭 " + loc["destination_country"])
+                Spacer(Modifier.height(12.dp))
+                PickerField(
+                    label = loc["destination_country"],
+                    value = Destinations.all.firstOrNull { it.code == destinationCountry }?.let { it.flag + " " + loc["route_country_tr"] }.orEmpty(),
+                    placeholder = loc["select"],
+                    options = Destinations.all.map { it.code to (it.flag + " " + loc["route_country_tr"]) },
+                    onSelect = { destinationCountry = it }
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(loc["destination_tr_hint"], style = MaterialTheme.typography.bodySmall, color = Ink3)
             }
 
             Spacer(Modifier.height(12.dp))

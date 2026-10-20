@@ -32,6 +32,7 @@ import coil.compose.AsyncImage
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Undertaking
 import com.karbama.app.data.local.LocalStore
+import com.karbama.app.data.routes.Destinations
 import com.karbama.app.data.sample.Catalog
 import com.karbama.app.util.AuthUtils
 import com.karbama.app.util.FormatUtils
@@ -83,6 +84,8 @@ fun RegistrationScreen(
     var city by remember { mutableStateOf("") }        // استان
     var district by remember { mutableStateOf("") }    // شهرستان
     var address by remember { mutableStateOf("") }
+    // v52.0.2 — مقصد کارجو: فعلاً ترکیه، آماده‌ی افزودن کشورهای بعدی
+    var destinationCountry by remember { mutableStateOf("") }
     val jobKeys = remember { mutableStateListOf<String>() }
     var spokenLangs by remember { mutableStateOf(listOf<String>()) }   // v45
     var jobQuery by remember { mutableStateOf("") }
@@ -109,7 +112,8 @@ fun RegistrationScreen(
             gender != "m" && gender != "f" -> loc["err_gender"]          // v50: الزامی
             else -> null
         }
-        2 -> if (city.isBlank() || district.isBlank()) loc["err_city"]
+        2 -> if (destinationCountry.isBlank()) loc["destination_required"]
+            else if (city.isBlank() || district.isBlank()) loc["err_city"]
             else if (address.isBlank()) loc["required_field"] else null
         3 -> if (jobKeys.isEmpty() && otherJobs.isBlank()) loc["err_job"] else null
         else -> when {
@@ -234,6 +238,7 @@ fun RegistrationScreen(
                                             city = city,
                                             district = district,
                                             address = address.trim(),
+                                            destinationCountry = destinationCountry,
                                             jobKeys = jobKeys.toList(),
                                             spokenLangs = spokenLangs,
                                             trLevel = level,
@@ -428,6 +433,21 @@ fun RegistrationScreen(
                             singleLine = false,
                             minLines = 2
                         )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    SectionCard {
+                        SectionTitle("🧭 " + loc["destination_country"])
+                        Spacer(Modifier.height(12.dp))
+                        PickerField(
+                            label = loc["destination_country"],
+                            value = Destinations.all.firstOrNull { it.code == destinationCountry }?.let { it.flag + " " + loc["route_country_tr"] }.orEmpty(),
+                            placeholder = loc["select"],
+                            required = true,
+                            options = Destinations.all.map { it.code to (it.flag + " " + loc["route_country_tr"]) },
+                            onSelect = { destinationCountry = it }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(loc["destination_tr_hint"], style = MaterialTheme.typography.bodySmall, color = Ink3)
                     }
                     Spacer(Modifier.height(12.dp))
                     InfoNote(

@@ -32,3 +32,6 @@ kb-tools/shots/
 Karbama/.kotlin/
 Karbama/functions/node_modules/
 .emulator_console_auth_token
+# local browser / Maven caches (not project artifacts)
+.m2/
+.playwright-cli/

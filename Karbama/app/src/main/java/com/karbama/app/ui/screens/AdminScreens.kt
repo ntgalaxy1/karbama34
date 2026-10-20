@@ -2,6 +2,12 @@
 
 package com.karbama.app.ui.screens
 
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -231,11 +237,14 @@ fun AdminContent(
     adsFee: Long = 6000L,                                   // #34: هزینه‌ی نمایش آگهی‌ها
     onSaveAdsFee: (Long) -> Unit = {},                      // #34
     onSetPayment: (Applicant, String) -> Unit = { _, _ -> },  // #34: تأیید/لغو پرداخت
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    initialTab: Int = 0,                                     // v51: برای رندر آزمایشی تب‌ها
+    adminEmail: String = "",                                 // v51: «یوزرنیم مدیر» = ایمیل Firebase
+    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") }   // v52
 ) {
     SystemBars(darkIcons = false)
 
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(initialTab) }
     var jobQuery by remember { mutableStateOf("") }
     var peopleQuery by remember { mutableStateOf("") }
     var cityFilter by remember { mutableStateOf("") }
@@ -371,6 +380,8 @@ fun AdminContent(
                 onDisable2FA = onDisable2FA,
                 signedCount = applicants.count { it.undertaking?.signed == true },
                 totalCount = applicants.size,
+                adminEmail = adminEmail,                          // v51
+                onChangeAdminPassword = onChangeAdminPassword,    // v51
                 modifier = Modifier.padding(padding),
                 tabs = { AdminTabs(loc, tab, applicants.size) { tab = it } }
             )
@@ -1340,25 +1351,33 @@ private fun admFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = Brand
 )
 
-/** #27/v46: دکمه‌ی «افزودن آگهی» دمو (.admin-add) — مربع طلایی با «+» (در گوشی، متن پنهان است) */
+/** v51: دکمه‌ی «افزودن آگهی» دمو (.admin-add): قرص طلایی «＋ آگهی جدید»؛ مثل دمو در عرض ≤۴۰۰ فقط «＋» */
 @Composable
 private fun AdminAddButton(text: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
-    Box(
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp > 400
+    Row(
         Modifier
-            .size(40.dp)
+            .height(38.dp)
+            .defaultMinSize(minWidth = 38.dp)
             .shadow(6.dp, shape, ambientColor = Accent, spotColor = Accent)
             .clip(shape)
             .background(Brush.verticalGradient(listOf(Color(0xFFFFB020), Color(0xFFF59E0B))))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (wide) 12.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             Icons.Filled.Add,
             contentDescription = text,
-            tint = WarnDeep,
-            modifier = Modifier.size(20.dp)
+            tint = Color(0xFF5A3D06),
+            modifier = Modifier.size(17.dp)
         )
+        if (wide) {
+            Spacer(Modifier.width(8.dp))
+            Text(text, color = Color(0xFF5A3D06), fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        }
     }
 }
 
@@ -1368,12 +1387,12 @@ private fun AdminExitButton(text: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Row(
         Modifier
-            .height(40.dp)
+            .height(38.dp)
             .clip(shape)
             .background(Color(0xFF08606E))      // معادل مات rgba(6,50,58,.4) روی نوار → بدون دو رنگی
             .border(1.4.dp, Color.White.copy(alpha = 0.55f), shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(start = 12.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1417,6 +1436,10 @@ private fun AdmLabel(text: String) {
     )
 }
 
+/**
+ * v51: کادر ورودی تنظیمات عین دمو (.card .adm-inp): سفید، قاب سفید، سایه‌ی نرم، ۵۲dp، گوشه‌ی ۱۶،
+ * متن ۱۵ پررنگ و چپ‌چین (dir=ltr)؛ در حالت فوکوس قاب سبزآبی + هاله‌ی ۴dp. دکمه‌ی چشم (.pw-eye) سمت راست.
+ */
 @Composable
 private fun AdmField(
     value: String,
@@ -1428,59 +1451,215 @@ private fun AdmField(
     revealable: Boolean = false,
     onToggleReveal: () -> Unit = {},
     revealLabel: String = "",
-    isError: Boolean = false
+    isError: Boolean = false,
+    readOnly: Boolean = false
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        isError = isError,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-        placeholder = placeholder?.let {
-            { Text(it, color = Ink3, style = MaterialTheme.typography.bodyLarge) }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .shadow(3.dp, AdmFieldShape),
-        shape = AdmFieldShape,
-        visualTransformation = if (revealable && !revealed) PasswordVisualTransformation()
-        else VisualTransformation.None,
-        trailingIcon = if (revealable) {
-            {
-                IconButton(onClick = onToggleReveal) {
-                    Icon(
-                        imageVector = if (revealed) Icons.Filled.VisibilityOff
-                        else Icons.Filled.Visibility,
-                        contentDescription = revealLabel,
-                        tint = Ink3
-                    )
+    var focused by remember { mutableStateOf(false) }
+    val shape = AdmFieldShape
+    val ring = Brand.copy(alpha = 0.16f)
+    val active = focused && !readOnly
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
+    ) {
+        androidx.compose.foundation.text.BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            readOnly = readOnly,
+            textStyle = androidx.compose.ui.text.TextStyle(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+                textAlign = TextAlign.Left,
+                textDirection = androidx.compose.ui.text.style.TextDirection.Ltr
+            ),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(Brand),
+            visualTransformation = if (revealable && !revealed) PasswordVisualTransformation()
+            else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .onFocusChanged { focused = it.isFocused },
+            decorationBox = { inner ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .drawBehind {
+                            if (active) {
+                                val g = 4.dp.toPx()
+                                drawRoundRect(
+                                    color = ring,
+                                    topLeft = androidx.compose.ui.geometry.Offset(-g, -g),
+                                    size = androidx.compose.ui.geometry.Size(size.width + 2 * g, size.height + 2 * g),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(20.dp.toPx())
+                                )
+                            }
+                        }
+                        .shadow(3.dp, shape, ambientColor = Color(0xFF0C2632), spotColor = Color(0xFF0C2632))
+                        .clip(shape)
+                        .background(Color.White)
+                        .border(
+                            1.dp,
+                            when {
+                                isError -> Danger
+                                active -> Brand.copy(alpha = 0.75f)
+                                else -> Line.copy(alpha = 0.8f)   // لبه‌ی نرم (سایه‌ی دمو)
+                            },
+                            shape
+                        )
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = 16.dp, end = if (revealable) 52.dp else 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (value.isEmpty() && placeholder != null) {
+                            Text(
+                                placeholder,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Ink3,
+                                maxLines = 1
+                            )
+                        }
+                        inner()
+                    }
+                    if (revealable) {
+                        PwEye(
+                            shown = revealed,
+                            label = revealLabel,
+                            onClick = onToggleReveal,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 9.dp)
+                        )
+                    }
                 }
             }
-        } else null,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        colors = admFieldColors()
-    )
+        )
+    }
+}
+
+/** دکمه‌ی چشم دمو (.pw-eye): کاشی ۳۲dp گوشه‌ی ۱۲، زمینه‌ی سبزآبی کم‌رنگ؛ در حالت «نمایش» طلایی (.on) */
+@Composable
+private fun PwEye(shown: Boolean, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier
+            .size(32.dp)
+            .clip(shape)
+            .background(if (shown) Color(0x33FFB020) else Color(0x1F0E9F8E))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (shown) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+            contentDescription = label,
+            tint = if (shown) Color(0xFF8A5B00) else Color(0xFF0A7F91),
+            modifier = Modifier.size(17.dp)
+        )
+    }
+}
+
+/** دکمه‌ی کوچک دمو (.chip): قاب #E3ECF0، گوشه‌ی ۱۲، متن ۱۳ */
+@Composable
+private fun DemoChip(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        Modifier
+            .clip(shape)
+            .background(Color.White)
+            .border(1.dp, Line, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ink2, maxLines = 1)
+    }
+}
+
+/** کادر کلید دمو (.tfa-key): زمینه‌ی #F6FAFB، قاب، گوشه‌ی ۱۶؛ کلید (تک‌فاصله، چپ‌به‌راست) + دکمه‌ی چشم */
+@Composable
+private fun TfaKey(text: String, shown: Boolean, label: String, onToggle: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color(0xFFF6FAFB))
+            .border(1.dp, Line, shape)
+            .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "\u200E" + text,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            letterSpacing = 1.sp,
+            color = Ink,
+            maxLines = 1,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        PwEye(shown = shown, label = label, onClick = onToggle)
+    }
+}
+
+/** v51: دکمه‌ی سفید دمو (.btn-ghost): سفید، بدون قاب خاکستری، سایه‌ی نرم، گوشه‌ی ۱۶ */
+@Composable
+private fun AdmGhostButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .shadow(4.dp, shape, ambientColor = Color(0xFF0F1F2B), spotColor = Color(0xFF0F1F2B))
+            .clip(shape)
+            .background(Color.White)
+            .border(1.dp, Line.copy(alpha = 0.8f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Ink, maxLines = 1)
+    }
+}
+
+/** v51: عنوان بخش دمو (.sec-title): ۱۴ / وزن ۹۰۰ / ink2 + نقطه‌ی ۸dp با گرادیان برند */
+@Composable
+private fun AdmSecTitle(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(Color(0xFF0E9F8E), Color(0xFF0A7F91))))
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Black, color = Ink2)
+    }
 }
 
 /** عنوان بخش دمو (.sec-title) + توضیح کم‌رنگ زیر آن */
 @Composable
 private fun AdmSection(title: String, hint: String?) {
-    SectionTitle(title)
+    AdmSecTitle(title)
     if (hint != null) {
         Spacer(Modifier.height(4.dp))
-        Text(hint, fontSize = 13.sp, color = Ink3, lineHeight = 24.sp)
+        Text(hint, fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
     }
     Spacer(Modifier.height(12.dp))
 }
 
 /**
- * v46: تب «تنظیمات» عین دمو:
- *  ۱) یک کارت: تنظیمات کارگزار (کارت بانکی) ── هزینه نمایش آگهی‌ها ── 💾 ذخیره
- *  ۲) کارت ورود دومرحله‌ای
- *  ۳) کارت خلاصه‌ی خاکستری (کارت کارگزار، وضعیت ۲FA، تعهدنامه‌های امضاشده)
- * بخش «یوزرنیم/پسورد مدیر» دمو عمداً حذف است: ورود مدیر فقط با Firebase است
- * و هیچ اطلاعات ورود مدیر در برنامه نمایش داده یا ذخیره نمی‌شود.
+ * v51: تب «تنظیمات» عین دمو (adminSettings + tfaSettingsCard):
+ *  ۱) یک کارت: تنظیمات کارگزار ── هزینه نمایش آگهی‌ها ── 💾 ذخیره ── پنل مدیریت (یوزرنیم/پسورد) ── 💾 ذخیره
+ *  ۲) کارت ورود دومرحله‌ای (.tfa-state / .tfa-key / .chip)
+ *  ۳) کارت خلاصه‌ی خاکستری
+ * «پنل مدیریت»: یوزرنیم = ایمیل حساب Firebase مدیر (فقط نمایش)؛ پسورد = رمز تازه که مستقیم در
+ * Firebase Auth عوض می‌شود. رمز فعلی هیچ‌وقت خوانده یا نمایش داده نمی‌شود.
  */
 @Composable
 private fun AdminSettingsTab(
@@ -1499,36 +1678,49 @@ private fun AdminSettingsTab(
     onDisable2FA: () -> Unit,
     signedCount: Int = 0,
     totalCount: Int = 0,
+    adminEmail: String = "",                                            // v51
+    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") },   // v52
     modifier: Modifier = Modifier,
     tabs: @Composable () -> Unit = {}
 ) {
     var cardText by remember { mutableStateOf(FormatUtils.formatCard(brokerCard)) }
     var adsFeeText by remember(adsFee) { mutableStateOf(adsFee.toString()) }   // #34
-    var secretShown by remember { mutableStateOf(false) }
-    var recoveryShown by remember { mutableStateOf(false) }
+    var newPass by remember { mutableStateOf("") }        // v51
+    var passShown by remember { mutableStateOf(false) }   // v51
+    var askCurrent by remember { mutableStateOf(false) }   // v52: پنجره‌ی «پسورد فعلی»
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var curPass by remember { mutableStateOf("") }
+    var curShown by remember { mutableStateOf(false) }
+    var curBad by remember { mutableStateOf(false) }
+    val afterChange: (String) -> Unit = { st ->
+        when (st) {
+            "ok" -> { newPass = ""; passShown = false; askCurrent = false; curPass = ""; curBad = false }
+            "need_current" -> { askCurrent = true; curBad = false }
+            "wrong_current" -> { askCurrent = true; curBad = true }
+            else -> {}
+        }
+    }
+    var tfaShown by remember { mutableStateOf(false) }    // دمو: یک «نمایش» برای کلید و کد بازیابی
     var codeText by remember { mutableStateOf("") }
     var codeBad by remember { mutableStateOf(false) }
-    var saved by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
+    Box(modifier.fillMaxSize()) {
     Column(
-        modifier
+        Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp)
     ) {
         tabs()
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // ---------- ۱) کارگزار + هزینه‌ی نمایش آگهی‌ها (یک کارت، مثل دمو) ----------
+        // ---------- ۱) کارگزار + هزینه + پنل مدیریت (یک کارت، مثل دمو) ----------
         AdmCard(padding = 16.dp) {
             AdmSection(loc["und_adminSettings"], loc["und_adminHint"])
             AdmLabel(loc["und_adminCard"])
             AdmField(
                 value = cardText,
-                onValueChange = { input ->
-                    cardText = FormatUtils.formatCard(input)
-                    saved = false
-                },
+                onValueChange = { input -> cardText = FormatUtils.formatCard(input) },
                 placeholder = "1234 1234 1234 1234",
                 keyboardType = KeyboardType.Number
             )
@@ -1536,12 +1728,7 @@ private fun AdminSettingsTab(
             Text(loc["adm2_card_hint"], fontSize = 13.sp, color = Ink3, lineHeight = 20.sp)
             if (cardText.isNotBlank() && !FormatUtils.cardIsValid(cardText)) {
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    "⚠️ " + loc["und_cardWarn"],
-                    fontSize = 13.sp,
-                    color = Danger,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("⚠️ " + loc["und_cardWarn"], fontSize = 13.sp, color = Danger, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(16.dp))
@@ -1552,148 +1739,121 @@ private fun AdminSettingsTab(
             AdmLabel(loc["pay_amount"])
             AdmField(
                 value = adsFeeText,
-                onValueChange = { v ->
-                    adsFeeText = FormatUtils.digitsOnly(v, 9)
-                    saved = false
-                },
+                onValueChange = { v -> adsFeeText = FormatUtils.digitsOnly(v, 9) },
                 placeholder = "500",
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done
             )
             Spacer(Modifier.height(8.dp))
-            Text(
-                loc.money(adsFeeText.toLongOrNull() ?: adsFee),
-                fontSize = 13.sp,
-                color = Ink3
-            )
+            Text(loc.money(adsFeeText.toLongOrNull() ?: adsFee), fontSize = 13.sp, color = Ink3)
             Spacer(Modifier.height(12.dp))
             PrimaryButton(
                 text = "💾 " + loc["save"],
                 onClick = {
                     onSave(FormatUtils.digitsOnly(cardText, 16))
-                    onSaveAdsFee(adsFeeText.toLongOrNull() ?: adsFee)
-                    saved = true
+                    onSaveAdsFee(adsFeeText.toLongOrNull() ?: adsFee)   // پیام «✅ ذخیره شد» به‌صورت toast
                 }
             )
-            if (saved) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "✅ " + loc["adm2_saved"],
-                    fontSize = 13.sp,
-                    color = Ok,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = Line)
+            Spacer(Modifier.height(16.dp))
+
+            // ---- پنل مدیریت (عین دمو؛ با Firebase) ----
+            AdmSection(loc["admin_panel"], loc["adm_hint"])
+            AdmLabel(loc["adm_user"])
+            AdmField(
+                value = adminEmail,
+                onValueChange = {},
+                placeholder = "admin",
+                readOnly = true
+            )
+            Spacer(Modifier.height(12.dp))
+            AdmLabel(loc["adm_pass"])
+            AdmField(
+                value = newPass,
+                onValueChange = { newPass = it },
+                placeholder = "••••••",
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                revealable = true,
+                revealed = passShown,
+                onToggleReveal = { passShown = !passShown },
+                revealLabel = loc[if (passShown) "twofa_hide" else "twofa_show"]
+            )
+            Spacer(Modifier.height(14.dp))
+            PrimaryButton(
+                text = "💾 " + loc["save"],
+                onClick = { focusManager.clearFocus(); onChangeAdminPassword(newPass, null, afterChange) }
+            )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ---------- ۲) ورود دومرحله‌ای (2FA) ----------
         AdmCard(padding = 16.dp) {
-            AdmSection(loc["twofa_title"], loc["twofa_hint"])
+            AdmSecTitle(loc["twofa_title"])
+            Spacer(Modifier.height(4.dp))
+            Text(loc["twofa_hint"], fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = (if (twoFAEnabled) "🟢 " else "⚪ ") +
-                    loc[if (twoFAEnabled) "twofa_on" else "twofa_off"],
+                text = (if (twoFAEnabled) "🟢 " else "⚪ ") + loc[if (twoFAEnabled) "twofa_on" else "twofa_off"],
                 fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (twoFAEnabled) OkDeep else Ink3
+                fontWeight = FontWeight.Black,
+                color = if (twoFAEnabled) Color(0xFF12A150) else Ink
             )
+            Spacer(Modifier.height(12.dp))
 
             if (!twoFAEnabled && !twoFAPending) {
-                Spacer(Modifier.height(12.dp))
-                PrimaryButton(
-                    text = "🔐 " + loc["twofa_enable"],
-                    onClick = onBegin2FA
-                )
-            }
-
-            if (twoFAPending || twoFAEnabled) {
-                Spacer(Modifier.height(12.dp))
-                Text(loc["twofa_scan"], fontSize = 13.sp, color = Ink3, lineHeight = 22.sp)
+                PrimaryButton(text = "🔐 " + loc["twofa_enable"], onClick = onBegin2FA)
+            } else {
+                Text(loc["twofa_scan"], fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
                 Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = FieldBg,
-                    border = BorderStroke(1.dp, Line),
-                    modifier = Modifier.fillMaxWidth()
+                TfaKey(
+                    text = if (tfaShown) TotpUtil.pretty(twoFASecret) else "•••• •••• •••• ••••",
+                    shown = tfaShown,
+                    label = loc[if (tfaShown) "twofa_hide" else "twofa_show"],
+                    onToggle = { tfaShown = !tfaShown }
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DemoChip("📋 " + loc["twofa_copy"]) { clipboard.setText(AnnotatedString(twoFASecret)) }
+                    DemoChip(loc[if (tfaShown) "twofa_hide" else "twofa_show"]) { tfaShown = !tfaShown }
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
                 ) {
                     Text(
-                        text = if (secretShown) TotpUtil.pretty(twoFASecret)
-                        else "•••• •••• •••• ••••",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 8.dp)
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // #24: آیکون به‌جای ایموجی (ایموجی روی نوشته می‌افتاد)
-                    IconTextButton(
-                        icon = if (secretShown) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        text = loc[if (secretShown) "twofa_hide" else "twofa_show"],
-                        onClick = { secretShown = !secretShown }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    IconTextButton(
-                        icon = Icons.Filled.ContentCopy,
-                        text = loc["twofa_copy"],
-                        onClick = { clipboard.setText(AnnotatedString(twoFASecret)) }
-                    )
-                }
-                Text(
-                    twoFAUri,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Ink3,
-                    maxLines = 2
-                )
-
-                if (twoFAEnabled) {
-                    Spacer(Modifier.height(12.dp))
-                    HorizontalDivider(color = Line)
-                    Spacer(Modifier.height(12.dp))
-                    SectionTitle(loc["twofa_recovery"])
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = AccentLight,
-                        border = BorderStroke(1.dp, SunLine),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = if (recoveryShown) twoFARecovery else "••••-••••",
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                        )
-                    }
-                    IconTextButton(
-                        icon = if (recoveryShown) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        text = loc[if (recoveryShown) "twofa_hide" else "twofa_show"],
-                        onClick = { recoveryShown = !recoveryShown }
-                    )
-                    Text(
-                        loc["twofa_recovery_note"],
+                        twoFAUri,
                         fontSize = 13.sp,
                         color = Ink3,
-                        lineHeight = 22.sp
+                        lineHeight = 22.sp,
+                        textAlign = TextAlign.Left,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = Line)
+                Spacer(Modifier.height(16.dp))
+
+                if (twoFAEnabled) {
+                    AdmSecTitle(loc["twofa_recovery"])
+                    Spacer(Modifier.height(8.dp))
+                    TfaKey(
+                        text = if (tfaShown) twoFARecovery else "••••-••••",
+                        shown = tfaShown,
+                        label = loc[if (tfaShown) "twofa_hide" else "twofa_show"],
+                        onToggle = { tfaShown = !tfaShown }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    DemoChip("📋 " + loc["twofa_copy"]) { clipboard.setText(AnnotatedString(twoFARecovery)) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(loc["twofa_recovery_note"], fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
                     Spacer(Modifier.height(12.dp))
-                    GhostButton(
-                        text = "🚫 " + loc["twofa_disable"],
-                        onClick = onDisable2FA
-                    )
+                    AdmGhostButton(text = "🚫 " + loc["twofa_disable"], onClick = onDisable2FA)
                 } else {
-                    Spacer(Modifier.height(12.dp))
-                    HorizontalDivider(color = Line)
-                    Spacer(Modifier.height(12.dp))
                     AdmLabel(loc["twofa_code"])
                     AdmField(
                         value = codeText,
@@ -1705,52 +1865,132 @@ private fun AdminSettingsTab(
                     )
                     if (codeBad) {
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            "⚠️ " + loc["twofa_wrong"],
-                            fontSize = 13.sp,
-                            color = Danger,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("⚠️ " + loc["twofa_wrong"], fontSize = 13.sp, color = Danger, fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
                     PrimaryButton(
                         text = "✅ " + loc["twofa_confirm"],
-                        enabled = codeText.length == 6,
                         onClick = {
-                            if (onConfirm2FA(codeText)) {
-                                codeText = ""
-                                codeBad = false
-                                secretShown = false
-                            } else {
-                                codeBad = true
-                            }
+                            if (codeText.length == 6 && onConfirm2FA(codeText)) {
+                                codeText = ""; codeBad = false; tfaShown = false
+                            } else codeBad = true
                         }
                     )
                 }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ---------- ۳) کارت خلاصه‌ی خاکستری دمو ----------
         AdmCard(padding = 16.dp, color = Color(0xFFF6FAFB)) {
-            SummaryLine(
-                loc["und_brokerCard"],
-                if (cardText.isBlank()) "—" else loc.digits(cardText)
-            )
+            SummaryLine(loc["und_brokerCard"], if (cardText.isBlank()) "—" else loc.digits(cardText))
+            SummaryLine(loc["adm_user"], adminEmail.ifBlank { "—" })
             SummaryLine(loc["twofa_title"], loc[if (twoFAEnabled) "twofa_on" else "twofa_off"])
-            SummaryLine(loc["und_signed"], loc.n(signedCount) + " / " + loc.n(totalCount))
+            SummaryLine(loc["und_signed"], loc.n(signedCount), " / " + loc.n(totalCount))
         }
     }
+
+    // ---------- v52: تأیید پسورد فعلی (فقط وقتی Firebase «ورود اخیر» بخواهد) ----------
+    if (askCurrent) {
+        val close = { askCurrent = false; curPass = ""; curBad = false; curShown = false }
+        androidx.activity.compose.BackHandler(onBack = close)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0x730F1F2B))
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = close
+                )
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            val shape = RoundedCornerShape(24.dp)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .shadow(16.dp, shape)
+                    .clip(shape)
+                    .background(Color.White)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .background(Color.White)
+                    .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(BrandLight),
+                    contentAlignment = Alignment.Center
+                ) { Text("🔐", fontSize = 24.sp) }
+                Spacer(Modifier.height(12.dp))
+                Text(loc["adm_cur_title"], fontWeight = FontWeight.Black, fontSize = 16.sp, color = Ink, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    loc["adm_cur_hint"],
+                    fontSize = 13.sp,
+                    color = Ink3,
+                    lineHeight = 24.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(14.dp))
+                Column(Modifier.fillMaxWidth()) {
+                    AdmLabel(loc["adm_cur_pass"])
+                    AdmField(
+                        value = curPass,
+                        onValueChange = { curPass = it; curBad = false },
+                        placeholder = "••••••",
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                        revealable = true,
+                        revealed = curShown,
+                        onToggleReveal = { curShown = !curShown },
+                        revealLabel = loc[if (curShown) "twofa_hide" else "twofa_show"],
+                        isError = curBad
+                    )
+                    if (curBad) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("⚠️ " + loc["adm_cur_wrong"], fontSize = 13.sp, color = Danger, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                PrimaryButton(
+                    text = "✅ " + loc["adm_cur_ok"],
+                    onClick = {
+                        if (curPass.isNotEmpty()) onChangeAdminPassword(newPass, curPass, afterChange) else curBad = true
+                    }
+                )
+                Spacer(Modifier.height(6.dp))
+                TextButton(onClick = close) {
+                    Text(loc["adm_cur_cancel"], color = Ink2, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+    }   // Box
 }
 
 
+/** خط کارت خلاصه‌ی دمو: .small.muted با line-height ۲٫۱ و مقدار پررنگ */
 @Composable
-private fun SummaryLine(k: String, v: String) {
-    Row(Modifier.padding(vertical = 3.dp)) {
-        Text("$k: ", fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
-        Text(v, fontSize = 13.sp, color = Ink, fontWeight = FontWeight.Black, lineHeight = 26.sp)
-    }
+private fun SummaryLine(k: String, v: String, tail: String = "") {
+    Text(
+        buildAnnotatedString {
+            append("$k: ")
+            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold)) { append(v) }
+            append(tail)
+        },
+        fontSize = 13.sp,
+        color = Ink3,
+        lineHeight = 27.sp
+    )
 }
 
 /** #29: کارت «پسندیده‌ها» یا «درخواست‌های ارسالی» یک متقاضی در پنل مدیر */

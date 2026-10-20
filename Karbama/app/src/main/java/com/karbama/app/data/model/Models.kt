@@ -53,6 +53,8 @@ data class Applicant(
     val city: String = "",              // استان (محل سکونت)
     val district: String = "",          // شهرستان
     val address: String = "",           // آدرس کامل
+    // v52.0.2: کشور مقصد برای تب «مسیریابی» (فعلاً فقط TR؛ توسعه‌پذیر برای آپدیت‌های بعدی)
+    val destinationCountry: String = "TR",
     val jobKeys: List<String> = emptyList(),
     val spokenLangs: List<String> = emptyList(),   // v45: «زبان‌هایی که بلدم» (کدهای ISO 639)
     val trLevel: Int = 0,               // ۰ تا ۱۰۰

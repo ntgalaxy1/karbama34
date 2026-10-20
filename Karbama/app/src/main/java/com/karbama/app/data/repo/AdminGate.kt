@@ -91,6 +91,59 @@ object AdminGate {
         }
     }
 
+    /** v51: ایمیل حساب Firebase مدیرِ واردشده (برای «یوزرنیم مدیر» در تنظیمات) */
+    fun currentEmail(): String = Service.auth?.currentUser?.email.orEmpty()
+
+    enum class PwResult { OK, WEAK, NEED_CURRENT, WRONG_CURRENT, NETWORK, ERROR }
+
+    /**
+     * v51: تغییر رمز مدیر در Firebase Auth. اگر رمز به‌خاطرسپرده‌ی همین حساب موجود باشد،
+     * اول با آن دوباره احراز هویت می‌کند تا خطای «ورود اخیر لازم است» پیش نیاید.
+     */
+    suspend fun changePassword(
+        newPassword: String,
+        rememberedPassword: String?,
+        currentPassword: String? = null          // v52: پسوردی که مدیر همین الان در پنجره‌ی تأیید وارد کرد
+    ): PwResult {
+        val auth = Service.auth ?: return PwResult.ERROR
+        val user = auth.currentUser ?: return PwResult.NEED_CURRENT
+        val email = user.email ?: return PwResult.ERROR
+        return try {
+            if (!currentPassword.isNullOrEmpty()) {
+                // تأیید صریح: اگر پسورد فعلی غلط باشد همین‌جا خطای WRONG_CURRENT
+                try {
+                    user.reauthenticate(
+                        com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
+                    ).await()
+                } catch (e: FirebaseNetworkException) {
+                    return PwResult.NETWORK
+                } catch (e: com.google.firebase.FirebaseTooManyRequestsException) {
+                    lastDetail = "auth:too_many"
+                    return PwResult.ERROR
+                } catch (e: Exception) {
+                    return PwResult.WRONG_CURRENT
+                }
+            } else if (!rememberedPassword.isNullOrEmpty()) {
+                runCatching {
+                    user.reauthenticate(
+                        com.google.firebase.auth.EmailAuthProvider.getCredential(email, rememberedPassword)
+                    ).await()
+                }
+            }
+            user.updatePassword(newPassword).await()
+            PwResult.OK
+        } catch (e: com.google.firebase.auth.FirebaseAuthWeakPasswordException) {
+            PwResult.WEAK
+        } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+            PwResult.NEED_CURRENT                 // v52: به‌جای «خارج و دوباره وارد شوید» → پنجره‌ی پسورد فعلی
+        } catch (e: FirebaseNetworkException) {
+            PwResult.NETWORK
+        } catch (e: Exception) {
+            lastDetail = "auth:update_password"
+            PwResult.ERROR
+        }
+    }
+
     fun signOut() {
         runCatching { Service.auth?.signOut() }
     }

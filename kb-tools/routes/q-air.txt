@@ -1,0 +1,4 @@
+[out:json][timeout:180];
+area["ISO3166-1"="TR"]["admin_level"="2"]->.tr;
+nwr["aeroway"="aerodrome"]["iata"](area.tr);
+out center tags;

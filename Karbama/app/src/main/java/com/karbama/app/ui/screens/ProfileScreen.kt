@@ -281,6 +281,8 @@ fun ProfileContent(
                 InfoRow(loc["residence"], listOf(applicant.city, applicant.district)
                         .filter { it.isNotEmpty() }.joinToString(" / "))
                     HorizontalDivider(color = Line)
+                    InfoRow(loc["destination_country"], if (applicant.destinationCountry == "TR" || applicant.destinationCountry.isBlank()) "🇹🇷 " + loc["route_country_tr"] else applicant.destinationCountry)
+                    HorizontalDivider(color = Line)
                     InfoRow(loc["status_label"], loc.status(applicant.status))
                 }
 

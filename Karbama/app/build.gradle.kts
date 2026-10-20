@@ -22,8 +22,8 @@ android {
         targetSdk = 35
         // نسخه‌گذاری (به خواست کاربر از v52.0.1): هر نسخه‌ی تازه فقط عدد آخر +۱ → 52.0.2، 52.0.3 …
         // versionCode هم هر بار +۱ (اندروید برای نصب به‌روزرسانی لازم دارد)
-        versionCode = 53
-        versionName = "52.0.1"
+        versionCode = 54
+        versionName = "52.0.2"
         vectorDrawables { useSupportLibrary = true }
     }
 

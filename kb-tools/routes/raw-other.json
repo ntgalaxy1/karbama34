@@ -1,0 +1,420 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.7 375dc00a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-20T18:59:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "relation",
+  "id": 300961,
+  "members": [
+    {
+      "type": "node",
+      "ref": 5607774263,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 415023200,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 991922447,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 35391268,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 991922446,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Taksim",
+    "name": "F1: Taksim → Kabataş",
+    "network": "İstanbul Metrosu",
+    "operator": "Metro İstanbul",
+    "public_transport:version": "2",
+    "ref": "F1",
+    "route": "funicular",
+    "to": "Kabataş",
+    "type": "route",
+    "website": "https://www.metro.istanbul/Hatlarimiz/HatDetay?hat=F1",
+    "wikidata": "Q503503",
+    "wikimedia_commons": "Category:Istanbul Funicular line F1",
+    "wikipedia": "tr:F1 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "relation",
+  "id": 13313678,
+  "members": [
+    {
+      "type": "node",
+      "ref": 415023200,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 5607774263,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 991922446,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 837034532,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 991922447,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Kabataş",
+    "name": "F1: Kabataş → Taksim",
+    "network": "İstanbul Metrosu",
+    "operator": "Metro İstanbul",
+    "public_transport:version": "2",
+    "ref": "F1",
+    "route": "funicular",
+    "to": "Taksim",
+    "type": "route",
+    "website": "https://www.metro.istanbul/Hatlarimiz/HatDetay?hat=F1",
+    "wikidata": "Q503503",
+    "wikimedia_commons": "Category:Istanbul Funicular line F1",
+    "wikipedia": "tr:F1 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "relation",
+  "id": 13939020,
+  "members": [
+    {
+      "type": "node",
+      "ref": 12154421940,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12154421941,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12154421943,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1042188760,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 127705306,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1042188761,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "from": "მთაწმინდის პარკი",
+    "name": "თბილისის ფუნიკულიორი",
+    "name:de": "Standseilbahn Tiflis",
+    "name:en": "Tbilisi Funicular",
+    "name:ka": "თბილისის ფუნიკულიორი",
+    "name:ru": "Тбилисский фуникулёр",
+    "opening_hours": "Mo-Su 06:00-24:00",
+    "public_transport:version": "2",
+    "railway": "funicular",
+    "ref": "F1",
+    "route": "funicular",
+    "to": "ვილნიუსის მოედანი",
+    "type": "route",
+    "wheelchair": "no",
+    "wikidata": "Q1425131",
+    "wikipedia": "ka:თბილისის ფუნიკულიორი"
+  }
+},
+{
+  "type": "relation",
+  "id": 13946375,
+  "members": [
+    {
+      "type": "node",
+      "ref": 12154421943,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12154421942,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12154421940,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1042188761,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 508549679,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1042188760,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "charge": "12 GEL",
+    "fee": "yes",
+    "from": "ვილნიუსის მოედანი",
+    "name": "თბილისის ფუნიკულიორი",
+    "name:de": "Standseilbahn Tiflis",
+    "name:en": "Tbilisi Funicular",
+    "name:ka": "თბილისის ფუნიკულიორი",
+    "name:ru": "Тбилисский фуникулёр",
+    "opening_hours": "Mo-Su 06:00-24:00",
+    "public_transport:version": "2",
+    "railway": "funicular",
+    "ref": "F1",
+    "route": "funicular",
+    "to": "მთაწმინდის პარკი",
+    "type": "route",
+    "wheelchair": "limited",
+    "wikidata": "Q1425131",
+    "wikipedia": "ka:თბილისის ფუნიკულიორი"
+  }
+},
+{
+  "type": "relation",
+  "id": 14738977,
+  "members": [
+    {
+      "type": "node",
+      "ref": 10132990393,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 10132990394,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1095709457,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 897037840,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1110473790,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Boğaziçi Üniversitesi/Hisarüstü",
+    "name": "F4: Boğaziçi Üniversitesi/Hisarüstü → Aşiyan",
+    "network": "İstanbul Metrosu",
+    "operator": "Metro İstanbul",
+    "public_transport:version": "2",
+    "ref": "F4",
+    "route": "funicular",
+    "to": "Aşiyan",
+    "type": "route",
+    "website": "https://www.metro.istanbul/Hatlarimiz/HatDetay?hat=F4",
+    "wikidata": "Q31193345",
+    "wikimedia_commons": "Category:Istanbul Funicular line F4",
+    "wikipedia": "tr:F4 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "relation",
+  "id": 14738978,
+  "members": [
+    {
+      "type": "node",
+      "ref": 10132990394,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 10132990393,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1110473790,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1095709458,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1095709457,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Aşiyan",
+    "name": "F4: Aşiyan → Boğaziçi Üniversitesi/Hisarüstü",
+    "network": "İstanbul Metrosu",
+    "operator": "Metro İstanbul",
+    "public_transport:version": "2",
+    "ref": "F4",
+    "route": "funicular",
+    "to": "Boğaziçi Üniversitesi/Hisarüstü",
+    "type": "route",
+    "website": "https://www.metro.istanbul/Hatlarimiz/HatDetay?hat=F4",
+    "wikidata": "Q31193345",
+    "wikimedia_commons": "Category:Istanbul Funicular line F4",
+    "wikipedia": "tr:F4 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "node",
+  "id": 415023200,
+  "lat": 41.0339309,
+  "lon": 28.9922806,
+  "tags": {
+    "funicular": "yes",
+    "name": "Kabataş",
+    "name:ru": "Фуникулер",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 5607774263,
+  "lat": 41.0367798,
+  "lon": 28.9866658,
+  "tags": {
+    "funicular": "yes",
+    "name": "Taksim",
+    "operator": "İstanbul Ulaşım",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 10132990393,
+  "lat": 41.0850008,
+  "lon": 29.0460846,
+  "tags": {
+    "funicular": "yes",
+    "name": "Rumeli Hisarüstü",
+    "public_transport": "stop_position"
+  }
+},
+{
+  "type": "node",
+  "id": 10132990394,
+  "lat": 41.0815409,
+  "lon": 29.0539745,
+  "tags": {
+    "funicular": "yes",
+    "name": "Aşiyan",
+    "public_transport": "stop_position"
+  }
+},
+{
+  "type": "node",
+  "id": 12154421940,
+  "lat": 41.6949060,
+  "lon": 44.7867526,
+  "tags": {
+    "funicular": "yes",
+    "name": "მთაწმინდის პარკი",
+    "name:en": "Mtatsminda Park",
+    "name:ka": "მთაწმინდის პარკი",
+    "name:ru": "Парк Мтацминда",
+    "public_transport": "stop_position",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 12154421941,
+  "lat": 41.6950765,
+  "lon": 44.7892280,
+  "tags": {
+    "funicular": "yes",
+    "name": "პანთეონი",
+    "name:en": "Pantheon",
+    "name:ka": "პანთეონი",
+    "name:ru": "Пантеон",
+    "public_transport": "stop_position",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 12154421942,
+  "lat": 41.6951215,
+  "lon": 44.7892220,
+  "tags": {
+    "funicular": "yes",
+    "name": "პანთეონი",
+    "name:en": "Pantheon",
+    "name:ka": "პანთეონი",
+    "name:ru": "Пантеон",
+    "public_transport": "stop_position",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 12154421943,
+  "lat": 41.6952894,
+  "lon": 44.7918397,
+  "tags": {
+    "funicular": "yes",
+    "name": "ვილნიუსის მოედანი",
+    "name:en": "Vilnius Square",
+    "name:ka": "ვილნიუსის მოედანი",
+    "name:ru": "Вильнюсская площадь",
+    "public_transport": "stop_position",
+    "wheelchair": "no"
+  }
+}
+
+  ]
+}

@@ -420,10 +420,20 @@ private fun MainShell(
                         },
                         colors = navItemColors()
                     )
-                    // «ارتباط با ما» — کنار تب پروفایل، فقط برای کاربران عادی (مدیر پنل تمام‌صفحه دارد)
+                    // v52.0.2: مسیر‌یابی کشور مقصد، برای همهٔ کارجویان ثبت‌نام‌شده (قفل پرداخت ندارد).
                     NavigationBarItem(
                         selected = tab == 2,
                         onClick = { tab = 2 },
+                        icon = { Text("🧭", fontSize = 20.sp) },
+                        label = {
+                            Text(loc["tab_route"], style = MaterialTheme.typography.labelSmall)
+                        },
+                        colors = navItemColors()
+                    )
+                    // «ارتباط با ما» — فقط برای کاربران عادی (مدیر پنل تمام‌صفحه دارد)
+                    NavigationBarItem(
+                        selected = tab == 3,
+                        onClick = { tab = 3 },
                         icon = { Text("☎️", fontSize = 20.sp) },
                         label = {
                             Text(loc["tab_contact"], style = MaterialTheme.typography.labelSmall)
@@ -472,7 +482,9 @@ private fun MainShell(
                         // خروج مدیر → برگشت به صفحه‌ی ورود
                         vm.exitAdminPanel()
                         onLoggedOut()
-                    }
+                    },
+                    adminEmail = vm.adminEmail,                                                  // v51
+                    onChangeAdminPassword = { p, cur, cb -> vm.changeAdminPassword(p, cur, cb) }   // v52
                 )
 
                 // #35: صفحه‌ی اصلی همان صفحه‌ی قبلی است؛ فقط بخش آگهی‌ها
@@ -521,7 +533,9 @@ private fun MainShell(
                     onGoPay = onOpenPay            // #35: رفتن به صفحه‌ی پرداخت
                 )
 
-                tab == 2 -> ContactContent(loc = loc)
+                tab == 2 -> RouteContent(loc = loc, applicant = vm.myProfile)
+
+                tab == 3 -> ContactContent(loc = loc)
 
             }
         }

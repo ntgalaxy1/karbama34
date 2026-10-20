@@ -1,0 +1,759 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.7 375dc00a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-20T18:59:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "relation",
+  "id": 301616,
+  "members": [
+    {
+      "type": "node",
+      "ref": 31678662,
+      "role": "terminal"
+    },
+    {
+      "type": "node",
+      "ref": 31678663,
+      "role": "terminal"
+    },
+    {
+      "type": "way",
+      "ref": 1137107306,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1137107307,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 670177728,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1137107308,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Karaköy",
+    "name": "Tünel (F2): Karaköy → Beyoğlu",
+    "operator": "̣İETT",
+    "ref": "F2",
+    "route": "light_rail",
+    "to": "Beyoğlu",
+    "type": "route",
+    "website": "https://iett.istanbul/icerik/tunel",
+    "website:1": "https://iett.istanbul/RouteDetail?hkod=F2",
+    "wikidata": "Q387264",
+    "wikimedia_commons": "Category:Tünel",
+    "wikipedia": "tr:Tünel (İstanbul)"
+  }
+},
+{
+  "type": "relation",
+  "id": 456693,
+  "members": [
+    {
+      "type": "node",
+      "ref": 8994135973,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135972,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135971,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135970,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135959,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9149311348,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135969,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135974,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135975,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135976,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8994135977,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1082714760,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1082385566,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1004108964,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 52872569,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1546932806,
+      "role": "route"
+    }
+  ],
+  "tags": {
+    "colour": "#056D2E",
+    "from": "AŞTİ",
+    "name": "Ankaray AŞTİ→Dikimevi yol 1",
+    "name:en": "Ankaray AŞTİ→Dikimevi track 1",
+    "network": "Ankara Metrosu",
+    "operator": "EGO Genel Müdürlüğü",
+    "operator:short": "EGO",
+    "public_transport:version": "2",
+    "ref": "A",
+    "route": "light_rail",
+    "to": "Dikimevi",
+    "type": "route",
+    "wikidata": "Q128040291",
+    "wikipedia": "tr:Ankaray"
+  }
+},
+{
+  "type": "relation",
+  "id": 7877738,
+  "members": [
+    {
+      "type": "node",
+      "ref": 9264836489,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836488,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836483,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836482,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836481,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836480,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836479,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836478,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836477,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836476,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9264836475,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1546932805,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1004108958,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1004108965,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1082385567,
+      "role": "route"
+    },
+    {
+      "type": "way",
+      "ref": 1082714761,
+      "role": "route"
+    }
+  ],
+  "tags": {
+    "colour": "#056D2E",
+    "from": "Dikimevi",
+    "name": "Ankaray Dikimevi→AŞTİ yol 2",
+    "name:en": "Ankaray Dikimevi→AŞTİ track 2",
+    "network": "Ankara Metrosu",
+    "operator": "EGO Genel Müdürlüğü",
+    "operator:short": "EGO",
+    "public_transport:version": "2",
+    "ref": "A",
+    "route": "light_rail",
+    "to": "AŞTİ",
+    "type": "route",
+    "wikidata": "Q128040291",
+    "wikipedia": "tr:Ankaray"
+  }
+},
+{
+  "type": "relation",
+  "id": 9476599,
+  "members": [
+    {
+      "type": "node",
+      "ref": 5359098834,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 5359097016,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 683111651,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111654,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111652,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111655,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 555462519,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Seyrantepe",
+    "name": "F3: Seyrantepe → Vadistanbul",
+    "network": "İstanbul Metrosu",
+    "public_transport:version": "2",
+    "ref": "F3",
+    "route": "light_rail",
+    "to": "Vadistanbul",
+    "type": "route",
+    "website": "https://www.vadistanbul.com/havaray",
+    "wikidata": "Q31193173",
+    "wikimedia_commons": "Category:Istanbul Funicular line F3",
+    "wikipedia": "tr:F3 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "relation",
+  "id": 9488735,
+  "members": [
+    {
+      "type": "node",
+      "ref": 5359097016,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 5359098834,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 555462519,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111655,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111653,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111654,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 683111651,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Vadistanbul",
+    "name": "F3: Vadistanbul → Seyrantepe",
+    "network": "İstanbul Metrosu",
+    "public_transport:version": "2",
+    "ref": "F3",
+    "route": "light_rail",
+    "to": "Seyrantepe",
+    "type": "route",
+    "website": "https://www.vadistanbul.com/havaray",
+    "wikidata": "Q31193173",
+    "wikimedia_commons": "Category:Istanbul Funicular line F3",
+    "wikipedia": "tr:F3 (İstanbul Füniküleri)"
+  }
+},
+{
+  "type": "relation",
+  "id": 13313679,
+  "members": [
+    {
+      "type": "node",
+      "ref": 31678663,
+      "role": "terminal"
+    },
+    {
+      "type": "node",
+      "ref": 31678662,
+      "role": "terminal"
+    },
+    {
+      "type": "way",
+      "ref": 1137107306,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1137107307,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 670177728,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1137107308,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#7c7358",
+    "from": "Beyoğlu",
+    "name": "Tünel (F2): Beyoğlu → Karaköy",
+    "operator": "İETT",
+    "ref": "F2",
+    "route": "light_rail",
+    "to": "Karaköy",
+    "type": "route",
+    "website": "https://iett.istanbul/icerik/tunel",
+    "website:1": "https://iett.istanbul/RouteDetail?hkod=F2",
+    "wikidata": "Q387264",
+    "wikimedia_commons": "Category:Tünel",
+    "wikipedia": "tr:Tünel (İstanbul)"
+  }
+},
+{
+  "type": "node",
+  "id": 31678662,
+  "lat": 41.0228645,
+  "lon": 28.9740393,
+  "tags": {
+    "name": "Karaköy",
+    "name:en": "Karaköy Station, Tünel Line",
+    "opening_hours": "Mo-Sa 07:00-22:45; Su 07:30-22:45",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "funicular",
+    "tunnel": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q48805491",
+    "wikimedia_commons": "Category:Karaköy (Tünel)"
+  }
+},
+{
+  "type": "node",
+  "id": 31678663,
+  "lat": 41.0283447,
+  "lon": 28.9739892,
+  "tags": {
+    "funicular": "yes",
+    "internet_access": "no",
+    "name": "Beyoğlu",
+    "name:en": "Beyoğlu Station, Tünel Line",
+    "opening_hours": "Mo-Sa 07:00-22:45; Su 07:30-22:45",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "funicular",
+    "tunnel": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q20313271",
+    "wikimedia_commons": "Category:Beyoğlu station"
+  }
+},
+{
+  "type": "node",
+  "id": 5359097016,
+  "lat": 41.1075590,
+  "lon": 28.9882407,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Vadi İstanbul",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 5359098834,
+  "lat": 41.1031300,
+  "lon": 28.9946200,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Seyrantepe",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135959,
+  "lat": 39.9347379,
+  "lon": 32.8372645,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Anadolu/Anıtkabir",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135969,
+  "lat": 39.9257006,
+  "lon": 32.8476620,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Demirtepe",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135970,
+  "lat": 39.9325822,
+  "lon": 32.8285286,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Beşevler",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135971,
+  "lat": 39.9311049,
+  "lon": 32.8199849,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Bahçelievler",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135972,
+  "lat": 39.9231999,
+  "lon": 32.8149230,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Emek",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135973,
+  "lat": 39.9182591,
+  "lon": 32.8144213,
+  "tags": {
+    "light_rail": "yes",
+    "name": "AŞTİ",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135974,
+  "lat": 39.9206753,
+  "lon": 32.8539525,
+  "tags": {
+    "light_rail": "yes",
+    "name": "15 Temmuz Kızılay Millî İrade",
+    "old_name": "Kızılay",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135975,
+  "lat": 39.9233589,
+  "lon": 32.8614237,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Kolej",
+    "network": "EGO",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135976,
+  "lat": 39.9282669,
+  "lon": 32.8684466,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Kurtuluş",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 8994135977,
+  "lat": 39.9325337,
+  "lon": 32.8780317,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Dikimevi",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9149311348,
+  "lat": 39.9324495,
+  "lon": 32.8425402,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Maltepe",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836475,
+  "lat": 39.9182569,
+  "lon": 32.8142068,
+  "tags": {
+    "light_rail": "yes",
+    "name": "AŞTİ",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836476,
+  "lat": 39.9232087,
+  "lon": 32.8148769,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Emek",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836477,
+  "lat": 39.9311128,
+  "lon": 32.8199204,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Bahçelievler",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836478,
+  "lat": 39.9326132,
+  "lon": 32.8285082,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Beşevler",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836479,
+  "lat": 39.9347718,
+  "lon": 32.8372714,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Anadolu/Anıtkabir",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836480,
+  "lat": 39.9324694,
+  "lon": 32.8425748,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Maltepe",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836481,
+  "lat": 39.9256893,
+  "lon": 32.8477168,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Demirtepe",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836482,
+  "lat": 39.9207048,
+  "lon": 32.8539548,
+  "tags": {
+    "light_rail": "yes",
+    "name": "15 Temmuz Kızılay Millî İrade",
+    "old_name": "Kızılay",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836483,
+  "lat": 39.9233868,
+  "lon": 32.8613910,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Kolej",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836488,
+  "lat": 39.9283075,
+  "lon": 32.8683965,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Kurtuluş",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9264836489,
+  "lat": 39.9326582,
+  "lon": 32.8779006,
+  "tags": {
+    "light_rail": "yes",
+    "name": "Dikimevi",
+    "public_transport": "stop_position",
+    "railway": "stop"
+  }
+}
+
+  ]
+}

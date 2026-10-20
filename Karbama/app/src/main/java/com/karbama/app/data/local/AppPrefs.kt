@@ -269,6 +269,7 @@ fun Applicant.toJson(): JSONObject = JSONObject().apply {
     put("city", city)
     put("district", district)
     put("address", address)
+    put("destinationCountry", destinationCountry)
     put("jobKeys", JSONArray(jobKeys))
     put("spokenLangs", JSONArray(spokenLangs))
     put("trLevel", trLevel)
@@ -326,6 +327,7 @@ fun jsonToApplicant(o: JSONObject): Applicant = Applicant(
     city = o.optString("city"),
     district = o.optString("district"),
     address = o.optString("address"),
+    destinationCountry = o.optString("destinationCountry", "TR"),
     jobKeys = o.optJSONArray("jobKeys").toStringList(),
     spokenLangs = o.optJSONArray("spokenLangs").toStringList(),
     trLevel = o.optInt("trLevel"),
