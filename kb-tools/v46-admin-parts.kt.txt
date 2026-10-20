@@ -1,0 +1,351 @@
+// ==========================================================
+// v46 — اجزای پنل مدیریت دقیقاً مطابق karbama-demo.html
+// ==========================================================
+
+/** گرادیان appbar.teal دمو: linear-gradient(135deg,#088080,#0A7F91) */
+private val AdminBarBrush = Brush.linearGradient(listOf(Color(0xFF088080), Color(0xFF0A7F91), Color(0xFF0A7F91)))
+private val AdmCardShape = RoundedCornerShape(20.dp)
+
+/** نوار بالای پنل: آیکون + عنوان، دکمه‌ی طلایی «+» و دکمه‌ی «خروج از حساب» */
+@Composable
+private fun AdminHeader(
+    icon: String,
+    title: String,
+    addLabel: String,
+    onAdd: () -> Unit,
+    exitLabel: String,
+    onExit: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(AdminBarBrush)
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .defaultMinSize(minHeight = 62.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(icon, fontSize = 20.sp)
+            Text(
+                title,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                lineHeight = 22.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            AdminAddButton(text = addLabel, onClick = onAdd)      // #27
+            AdminExitButton(text = exitLabel, onClick = onExit)   // #25
+        }
+    }
+}
+
+/** تب‌های قرصی دمو (.tabs): زمینه‌ی #ECF3F6، تب فعال سفید با سایه */
+@Composable
+private fun AdminTabs(loc: Loc, tab: Int, peopleCount: Int, onTab: (Int) -> Unit) {
+    val labels = listOf(
+        loc["tab_listings"],
+        loc["tab_applicants"] + " (" + loc.n(peopleCount) + ")",
+        loc["und_tabSettings"]
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFECF3F6))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        labels.forEachIndexed { i, label ->
+            val on = i == tab
+            Box(
+                Modifier
+                    .weight(1f)
+                    .then(if (on) Modifier.shadow(3.dp, RoundedCornerShape(12.dp)) else Modifier)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (on) Color.White else Color.Transparent)
+                    .clickable { onTab(i) }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (on) BrandDark else Ink2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/** کارت سفید مات دمو (.card / .person): گوشه‌ی گرد، قاب #E3ECF0، سایه‌ی نرم */
+@Composable
+private fun AdmCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    color: Color = Color.White,
+    padding: Dp = 12.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clip(AdmCardShape).clickable(onClick = onClick) else Modifier),
+        shape = AdmCardShape,
+        color = color,
+        border = BorderStroke(1.dp, Line),
+        shadowElevation = 3.dp
+    ) {
+        Column(Modifier.padding(padding), content = content)
+    }
+}
+
+/** کادر جست‌وجوی دمو */
+@Composable
+private fun AdmSearch(value: String, onChange: (String) -> Unit, placeholder: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        placeholder = { Text(placeholder, color = Ink3, fontSize = 14.sp) },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(3.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        textStyle = MaterialTheme.typography.bodyMedium,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = Color.White,
+            focusedContainerColor = Color.White,
+            focusedBorderColor = Brand,
+            unfocusedBorderColor = Line
+        )
+    )
+}
+
+/** برچسب کوچک .mini دمو (💵 حقوق، 🕒 نوع قرارداد، 🗓 زمان) */
+@Composable
+private fun Mini(text: String) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF6FAFB))
+            .border(1.dp, Color(0xFFEDF3F6), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(text, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Ink2, maxLines = 1)
+    }
+}
+
+@Composable
+private fun StatCard(
+    value: String,
+    label: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    AdmCard(modifier = modifier, onClick = onClick) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = accent)
+            Spacer(Modifier.height(2.dp))
+            Text(label, fontSize = 12.sp, color = Ink3, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** دکمه‌ی کوچک دمو: .btn-ghost.btn-sm / .btn-danger.btn-sm */
+@Composable
+private fun AdmSmallButton(text: String, danger: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(
+                if (danger) Brush.linearGradient(listOf(Color(0xFFFEF0F0), Color(0xFFFFEDE7)))
+                else Brush.linearGradient(listOf(Color.White, Color.White))
+            )
+            .border(1.5.dp, if (danger) Color(0xFFFFEDE7) else Line, shape)
+            .clickable(onClick = onClick)
+            .padding(vertical = 11.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (danger) DangerText else Ink,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun AdminJobRow(
+    job: Job,
+    loc: Loc,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    AdmCard(onClick = onEdit) {
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandBrush),
+                contentAlignment = Alignment.Center
+            ) { Text(loc.jobIcon(job.titleKey), fontSize = 17.sp) }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    job.titleKey.takeIf { it.isNotEmpty() }?.let { loc.jobTitle(it) } ?: job.titleCustom,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    listOf(job.company, job.city + if (job.district.isBlank()) "" else " / " + job.district)
+                        .filter { it.isNotBlank() }.joinToString(" · "),
+                    fontSize = 13.sp,
+                    color = Ink3,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                FlowRowCompat {
+                    Mini("💵 " + loc.money(job.salary))
+                    Mini("🕒 " + loc.contract(job.contract))
+                    Mini("🗓 " + loc.timeAgo(job.publishedAt))
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AdmSmallButton("✏️ " + loc["adm2_edit_job"], false, Modifier.weight(1f), onEdit)
+            AdmSmallButton("🗑 " + loc["delete"], true, Modifier.weight(1f), onDelete)
+        }
+    }
+}
+
+/** ردیف متقاضی (.person دمو): آواتار، نام، محل/سطح ترکی، مبلغ، تخصص‌ها؛ سمت دیگر وضعیت/پرداخت/زمان */
+@Composable
+private fun ApplicantRow(
+    applicant: Applicant,
+    loc: Loc,
+    onClick: () -> Unit
+) {
+    AdmCard(onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val photo = photoModel(applicant.bodyPhotoUrl)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .shadow(3.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(Violet, Brand)))
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (photo != null) {
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        initials(applicant.fullName),
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 15.sp
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(applicant.fullName, fontSize = 14.sp, fontWeight = FontWeight.Black, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "📍 " + listOf(applicant.city, applicant.district)
+                        .filter { it.isNotEmpty() }.joinToString(" / ") +
+                        " · 🗣 " + loc.n(applicant.trLevel) + "%",
+                    fontSize = 13.sp,
+                    color = Ink3
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "💰 " + loc.money(applicant.undertaking?.fee ?: 0L),
+                    fontSize = 13.sp,
+                    color = Ink3
+                )
+                if (applicant.jobKeys.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    FlowRowCompat {
+                        applicant.jobKeys.take(3).forEach {
+                            Mini(loc.jobIcon(it) + " " + loc.jobTitle(it))
+                        }
+                    }
+                }
+                if (applicant.spokenLangs.isNotEmpty()) {   // v45
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "🌐 " + WorldLanguages.labels(applicant.spokenLangs.take(4), loc.code),
+                        fontSize = 12.sp,
+                        color = Ink3,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                StatusBadge(applicant.status, loc)
+                Spacer(Modifier.height(8.dp))
+                PayBadge(applicant.payStatus, loc)   // #34
+                Spacer(Modifier.height(8.dp))
+                Text(loc.timeAgo(applicant.createdAt), fontSize = 12.sp, color = Ink3)
+            }
+        }
+    }
+}
+
+private enum class ChipTone { Plain, Amber, Green }
+
+/** چیپ وضعیت دمو (.chip / .chip.on) با رنگ‌های «بررسی‌شده» و «معرفی‌شده» */
+@Composable
+private fun StatusChip(text: String, selected: Boolean, tone: ChipTone, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val (bg, line, fg) = when {
+        selected -> Triple(Brush.linearGradient(listOf(Color(0xFFE2FBF3), Color(0xFFD6F2EC))), Brand.copy(alpha = 0.42f), BrandDark)
+        tone == ChipTone.Amber -> Triple(Brush.linearGradient(listOf(AccentLight, AccentLight)), SunLine, WarnText)
+        tone == ChipTone.Green -> Triple(Brush.linearGradient(listOf(OkLight, OkLight)), Color(0xFFA7F3D0), OkDeep)
+        else -> Triple(Brush.linearGradient(listOf(Color.White, Color(0xFFF6FAFB))), Line, Ink2)
+    }
+    Box(
+        Modifier
+            .then(if (selected) Modifier.shadow(3.dp, shape) else Modifier)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, line, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1)
+    }
+}
+

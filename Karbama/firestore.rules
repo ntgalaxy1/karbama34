@@ -1,76 +1,217 @@
-rules_version = '2';
+rules_version = "2";
 
-// ==========================================================
-//  قواعد امنیتی Firestore — کارباما / Karbama
-//  در Firebase Console → Firestore → Rules این متن را جای‌گذاری و Publish کن.
-// ==========================================================
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Authentication
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // مدیر کسی است که سندش در مجموعه‌ی admins باشد
+    // Admin verification
     function isAdmin() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        && exists(
+          /databases/$(database)/documents/admins/$(request.auth.uid)
+        );
     }
 
-    // ---------- آگهی‌های استخدام ----------
-    // همه می‌توانند بخوانند (حتی بدون ورود)، ولی فقط مدیر می‌تواند ثبت/ویرایش/حذف کند.
+    // Jobs: public read, admin write
     match /jobs/{jobId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // ---------- متقاضیان ----------
-    // هر کس فقط پروفایل خودش را می‌سازد و می‌خواند؛ مدیر همه را می‌بیند.
-    match /applicants/{uid} {
-      allow create: if isSignedIn() && request.auth.uid == uid;
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      // #34: تأیید پرداخت («paid») فقط با مدیر است؛ کارجو حداکثر می‌تواند وضعیت را از
-      // «چیزی» به «pending / خالی» ببرد و هیچ‌وقت خودش را پرداخت‌شده اعلام کند.
-      allow update: if isSignedIn() && (isAdmin() || (
-                      request.auth.uid == uid && (
-                        !(request.resource.data.diff(resource.data).affectedKeys()
-                            .hasAny(["paymentStatus", "paymentAt"]))
-                        || (request.resource.data.paymentStatus in ["", "pending", "paid"]
-                            && (request.resource.data.paymentStatus != "paid"
-                                || resource.data.paymentStatus == "paid"))
-                      )));
+    // Job images: public read, admin write
+    match /jobFiles/{fileId} {
+      allow read: if true;
+
+      allow create, update: if isAdmin()
+        && request.resource.data.contentType == "image/jpeg"
+        && request.resource.data.data is bytes
+        && request.resource.data.data.size() <= 950000
+        && request.resource.data.size is int
+        && request.resource.data.size
+             == request.resource.data.data.size();
+
       allow delete: if isAdmin();
     }
 
-    // ---------- #29: پسندیده‌ها (likes) و درخواست‌های ارسالی (applications) ----------
-    // شناسه‌ی هر سند: {شناسه‌ی متقاضی}_{شناسه‌ی آگهی}  → نوشتن دوباره رکورد تکراری نمی‌سازد.
-    // هر سند فیلد applicantId دارد؛ فقط صاحب همان سند (یا مدیر) می‌تواند بنویسد/پاک کند.
-    match /likes/{docId} {
-      allow read: if isSignedIn();                       // کارجو و مدیر
+    // Applicants
+    match /applicants/{uid} {
+
+      function paymentFieldsChanged() {
+        return request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasAny([
+            "paymentStatus",
+            "paymentAt",
+            "paymentMethod",
+            "paymentReference",
+            "paymentReceiptUrl"
+          ]);
+      }
+
+      function validManualRequest() {
+        return resource.data.get("paymentStatus", "") != "paid"
+          && request.resource.data.get("paymentStatus", "")
+               in ["", "pending"]
+          && request.resource.data.diff(resource.data)
+               .affectedKeys()
+               .hasOnly([
+                 "paymentStatus",
+                 "paymentMethod",
+                 "paymentReference",
+                 "paymentReceiptUrl"
+               ])
+          && (
+            request.resource.data.get("paymentStatus", "") != "pending"
+            || (
+              request.resource.data.get("paymentMethod", "") == "manual"
+              && request.resource.data.get("paymentReference", null)
+                   is string
+              && request.resource.data.paymentReference.size() >= 3
+              && request.resource.data.paymentReference.size() <= 32
+              && request.resource.data.get("paymentReceiptUrl", null)
+                   is string
+              && request.resource.data.paymentReceiptUrl.size() > 0
+            )
+          );
+      }
+
+      // Applicant creates own profile
       allow create: if isSignedIn()
-                    && request.resource.data.applicantId == request.auth.uid;
-      allow delete: if isSignedIn()
-                    && (resource.data.applicantId == request.auth.uid || isAdmin());
-      allow update: if false;                            // فقط ساختن و پاک‌کردن
+        && request.auth.uid == uid
+        && request.resource.data.get("paymentStatus", "") == ""
+        && !request.resource.data.keys().hasAny([
+          "paymentAt"
+        ]);
+
+      // Owner or admin reads profile
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+
+      // Admin can update; applicant has restricted updates
+      allow update: if isSignedIn()
+        && (
+          isAdmin()
+          || (
+            request.auth.uid == uid
+            && (
+              !paymentFieldsChanged()
+              || validManualRequest()
+            )
+            && !request.resource.data.diff(resource.data)
+                 .affectedKeys()
+                 .hasAny(["paymentAt"])
+          )
+        );
+
+      // Only admin deletes applicant profile
+      allow delete: if isAdmin();
     }
 
-    match /applications/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
-                    && request.resource.data.applicantId == request.auth.uid;
-      allow delete: if isSignedIn()
-                    && (resource.data.applicantId == request.auth.uid || isAdmin());
-      allow update: if false;
-    }
+    // Payment sessions: owner read, no client writes
+    match /paymentSessions/{sessionId} {
+      allow read: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
 
-    // ---------- فهرست مدیران ----------
-    // هر مدیر فقط سند خودش را می‌خواند؛ نوشتن فقط از کنسول Firebase.
-    match /admins/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
       allow write: if false;
     }
 
-    // بقیه‌ی مسیرها بسته است
+    // Likes: owner or admin reads and deletes
+    match /likes/{docId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.applicantId == request.auth.uid
+          || isAdmin()
+        );
+
+      allow create: if isSignedIn()
+        && request.resource.data.applicantId == request.auth.uid;
+
+      allow delete: if isSignedIn()
+        && (
+          resource.data.applicantId == request.auth.uid
+          || isAdmin()
+        );
+
+      allow update: if false;
+    }
+
+    // Applications: owner or admin reads and deletes
+    match /applications/{docId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.applicantId == request.auth.uid
+          || isAdmin()
+        );
+
+      allow create: if isSignedIn()
+        && request.resource.data.applicantId == request.auth.uid;
+
+      allow delete: if isSignedIn()
+        && (
+          resource.data.applicantId == request.auth.uid
+          || isAdmin()
+        );
+
+      allow update: if false;
+    }
+
+    // Applicant images and payment receipts
+    // Path: applicantFiles/{uid}/files/{kind}
+    match /applicantFiles/{uid}/files/{kind} {
+
+      // Owner or admin reads files
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+
+      // Owner uploads or replaces permitted images
+      allow create, update: if isSignedIn()
+        && request.auth.uid == uid
+        && kind in [
+          "id_card",
+          "body_photo",
+          "payment_receipt"
+        ]
+        && request.resource.data.keys().hasAll([
+          "owner",
+          "contentType",
+          "size",
+          "data",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "owner",
+          "contentType",
+          "size",
+          "data",
+          "updatedAt"
+        ])
+        && request.resource.data.owner == uid
+        && request.resource.data.contentType == "image/jpeg"
+        && request.resource.data.data is bytes
+        && request.resource.data.data.size() <= 950000
+        && request.resource.data.size is int
+        && request.resource.data.size
+             == request.resource.data.data.size();
+
+      // Owner or admin deletes files
+      allow delete: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+    }
+
+    // Admin documents
+    match /admins/{uid} {
+      allow read: if isSignedIn()
+        && request.auth.uid == uid;
+
+      allow write: if false;
+    }
+
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }

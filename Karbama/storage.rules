@@ -3,8 +3,8 @@ rules_version = '2';
 // ==========================================================
 //  قواعد امنیتی Firebase Storage — کارباما / Karbama
 //  در Firebase Console → Storage → Rules این متن را جای‌گذاری و Publish کن.
-//  ⚠️ مقدار ADMIN_UID_1 را با شناسه‌ی کاربری حساب مدیر عوض کن
-//     (Authentication → Users → User UID).
+//  v47: مدیر = کاربری که سند admins/{UID} در Firestore دارد (همان قانون ورود مدیر).
+//  نیازی به نوشتن UID در این فایل نیست.
 // ==========================================================
 service firebase.storage {
   match /b/{bucket}/o {
@@ -14,10 +14,8 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.uid in [
-        "ADMIN_UID_1",   // ← شناسه‌ی کاربری مدیر را اینجا بگذار
-        "ADMIN_UID_2"    // ← اگر چند مدیر داری، ادامه بده
-      ];
+      return isSignedIn()
+             && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
     }
 
     function isImageUpTo5Mb() {
@@ -31,12 +29,13 @@ service firebase.storage {
                  || request.resource.contentType.matches('video/.*'));
     }
 
-    // ---------- مدارک متقاضیان: عکس پاسپورت و عکس تمام‌قد ----------
+    // ---------- مدارک متقاضیان: پاسپورت، عکس تمام‌قد و رسید پرداخت v38 ----------
     match /applicants/{uid}/{fileName} {
       // خود فرد و مدیران می‌توانند ببینند
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
 
-      // فقط خود فرد آپلود می‌کند؛ حداکثر ۵ مگابایت و فقط تصویر
+      // فقط خود فرد آپلود می‌کند؛ حداکثر ۵ مگابایت و فقط تصویر.
+      // رسید پرداخت در مسیر applicants/{uid}/payment_receipt.jpg است و مدیر فقط خواندن دارد.
       allow write: if isSignedIn()
                    && request.auth.uid == uid
                    && isImageUpTo5Mb();

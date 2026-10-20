@@ -1,0 +1,231 @@
+    // v46: عین دمو — هر تب یک صفحه‌ی اسکرول‌شونده؛ تب‌ها (قرصی) بالای همان صفحه
+    val statusCounts = remember(applicants) {
+        applicants.groupingBy { it.status.ifEmpty { "new" } }.eachCount()
+    }
+    // v45: فیلتر «زبان‌هایی که بلد است» — زبان‌های متقاضیان فعلی بالای فهرست
+    val worldLangs = remember(loc.code) { WorldLanguages.all(loc.code) }
+    val langOptions = remember(worldLangs, applicants) {
+        val used = applicants.flatMap { it.spokenLangs }.groupingBy { it }.eachCount()
+        val (u, rest) = worldLangs.partition { used.containsKey(it.code) }
+        u.sortedByDescending { used[it.code] ?: 0 }
+            .map { it.code to "${it.label}  (${loc.n(used[it.code] ?: 0)})" } +
+            rest.map { it.code to it.label }
+    }
+    val langSearch = remember(worldLangs) { worldLangs.associate { it.code to it.search } }
+
+    Scaffold(
+        containerColor = Bg,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            // دمو: 🛡️ پنل مدیریت  [+]  [خروج از حساب] — در تنظیمات: ⚙️ تنظیمات کارگزار
+            AdminHeader(
+                icon = if (tab == 2) "⚙️" else "🛡️",
+                title = if (tab == 2) loc["und_adminSettings"] else loc["admin_panel"],
+                addLabel = loc["add_listing"],
+                onAdd = onNewJob,
+                exitLabel = loc["logout"],
+                onExit = onExit
+            )
+        },
+    ) { padding ->
+        when (tab) {
+            0 -> LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item { AdminTabs(loc, tab, applicants.size) { tab = it } }
+                // ---------- آمار (فقط در تب آگهی‌ها، مثل دمو) ----------
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatCard(
+                            loc.n(jobs.count { it.active }), loc["stats_jobs"], BrandDark,
+                            Modifier.weight(1f)
+                        )
+                        StatCard(
+                            loc.n(applicants.size), loc["stats_people"], VioletDeep,
+                            Modifier.weight(1f),
+                            onClick = { tab = 1; statusFilter = "" }
+                        )
+                        StatCard(
+                            loc.n(statusCounts["new"] ?: 0), "🆕 " + loc["st_new"], AccentGoldDeep,
+                            Modifier.weight(1f),
+                            onClick = { tab = 1; statusFilter = "new" }
+                        )
+                    }
+                }
+                item {
+                    AdmSearch(jobQuery, { jobQuery = it }, loc["search_jobs_hint"])
+                }
+                if (visibleJobs.isEmpty()) {
+                    item { EmptyState("📭", loc["no_listings"]) }
+                }
+                items(visibleJobs, key = { it.id }) { job ->
+                    AdminJobRow(
+                        job = job,
+                        loc = loc,
+                        onEdit = { onEditJob(job) },
+                        onDelete = { pendingDelete = job }   // #26: اول می‌پرسد، بعد پاک می‌کند
+                    )
+                }
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    PrimaryButton(text = "＋ " + loc["add_listing"], onClick = onNewJob)
+                }
+            }
+
+            2 -> AdminSettingsTab(
+                loc = loc,
+                brokerCard = brokerCard,
+                adsFee = adsFee,                        // #34
+                onSaveAdsFee = onSaveAdsFee,            // #34
+                twoFAEnabled = twoFAEnabled,
+                twoFAPending = twoFAPending,
+                twoFASecret = twoFASecret,
+                twoFARecovery = twoFARecovery,
+                twoFAUri = twoFAUri,
+                onSave = onSaveSettings,
+                onBegin2FA = onBegin2FA,
+                onConfirm2FA = onConfirm2FA,
+                onDisable2FA = onDisable2FA,
+                signedCount = applicants.count { it.undertaking?.signed == true },
+                totalCount = applicants.size,
+                modifier = Modifier.padding(padding),
+                tabs = { AdminTabs(loc, tab, applicants.size) { tab = it } }
+            )
+
+            else -> LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item { AdminTabs(loc, tab, applicants.size) { tab = it } }
+                // ---------- تفکیک متقاضیان با کلیک روی وضعیت‌ها (دمو) ----------
+                item {
+                    Text(
+                        "👆 " + loc["adm2_filter_hint"],
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ink3,
+                        lineHeight = 22.sp
+                    )
+                }
+                item {
+                    FlowRowCompat {
+                        StatusChip(
+                            "🧑‍🤝‍🧑 " + loc["all_applicants"] + " " + loc.n(applicants.size),
+                            statusFilter.isEmpty(), ChipTone.Plain
+                        ) { statusFilter = "" }
+                        StatusChip(
+                            "🆕 " + loc["st_new"] + " " + loc.n(statusCounts["new"] ?: 0),
+                            statusFilter == "new", ChipTone.Plain
+                        ) { statusFilter = if (statusFilter == "new") "" else "new" }
+                        StatusChip(
+                            "🔎 " + loc["st_reviewed"] + " " + loc.n(statusCounts["reviewed"] ?: 0),
+                            statusFilter == "reviewed", ChipTone.Amber
+                        ) { statusFilter = if (statusFilter == "reviewed") "" else "reviewed" }
+                        StatusChip(
+                            "🤝 " + loc["st_referred"] + " " + loc.n(statusCounts["referred"] ?: 0),
+                            statusFilter == "referred", ChipTone.Green
+                        ) { statusFilter = if (statusFilter == "referred") "" else "referred" }
+                    }
+                }
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    AdmSearch(peopleQuery, { peopleQuery = it }, loc["search_applicants"])
+                }
+                item {
+                    Text(
+                        "👆 " + loc["adm2_open_hint"],
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ink3
+                    )
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.weight(1f)) {
+                            PickerField(
+                                label = loc["province"],
+                                value = cityFilter,
+                                placeholder = loc["all"],
+                                options = Catalog.IR_PROVINCES.map { it.first to it.first },
+                                onSelect = { cityFilter = it },
+                                emptyOptionLabel = loc["all"],
+                                inlineLabel = true,
+                                containerColor = Color.White
+                            )
+                        }
+                        Box(Modifier.weight(1f)) {
+                            PickerField(
+                                label = loc["filter_specialty"],
+                                value = specFilter.takeIf { it.isNotEmpty() }
+                                    ?.let { loc.jobTitle(it) } ?: "",
+                                placeholder = loc["all"],
+                                options = Catalog.JOB_TITLES.map { it.key to "${it.icon} ${it.name(loc.code)}" },
+                                onSelect = { specFilter = it },
+                                searchable = true,
+                                searchPlaceholder = loc["search_profession"],
+                                emptyOptionLabel = loc["all"],
+                                inlineLabel = true,
+                                containerColor = Color.White
+                            )
+                        }
+                    }
+                }
+                item {
+                    // v45: زبان‌هایی که بلد است
+                    PickerField(
+                        label = "🗣 " + loc["spoken_langs"],
+                        value = langFilter.takeIf { it.isNotEmpty() }
+                            ?.let { WorldLanguages.label(it, loc.code) } ?: "",
+                        placeholder = loc["all"],
+                        options = langOptions,
+                        onSelect = { langFilter = it },
+                        searchable = true,
+                        searchPlaceholder = loc["search_lang"],
+                        emptyOptionLabel = loc["all"],
+                        matcher = { v, q -> langSearch[v]?.contains(q, ignoreCase = true) == true },
+                        inlineLabel = true,
+                        containerColor = Color.White
+                    )
+                }
+                item {
+                    Column {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            loc["filter_min_level"] + ": " +
+                                if (minLevel == 0) loc["all"] else loc.n(minLevel) + "%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Ink2
+                        )
+                        Slider(
+                            value = minLevel.toFloat(),
+                            onValueChange = { minLevel = (it / 10).toInt() * 10 },
+                            valueRange = 0f..100f,
+                            steps = 9,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Brand,
+                                activeTrackColor = Brand,
+                                inactiveTrackColor = Line
+                            )
+                        )
+                    }
+                }
+                if (visiblePeople.isEmpty()) {
+                    item { EmptyState("👥", loc["no_applicants"]) }
+                }
+                items(visiblePeople, key = { it.id }) { p ->
+                    ApplicantRow(
+                        applicant = p,
+                        loc = loc,
+                        onClick = { onOpenApplicant(p) }
+                    )
+                }
+            }
+        }
+    }
+

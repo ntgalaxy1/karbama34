@@ -1,0 +1,148 @@
+/**
+ * فیلد چندانتخابی با پنجره‌ی جست‌وجو (v45 — «زبان‌هایی که بلدم»).
+ * options: value to label ؛ searchText: متن اضافی قابل‌جست‌وجو برای هر value.
+ */
+@Composable
+fun MultiPickerField(
+    label: String,
+    selected: List<String>,
+    options: List<Pair<String, String>>,
+    onChange: (List<String>) -> Unit,
+    placeholder: String,
+    searchPlaceholder: String,
+    doneLabel: String,
+    clearLabel: String,
+    modifier: Modifier = Modifier,
+    searchText: ((String) -> String)? = null,
+    required: Boolean = false
+) {
+    var open by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val labelOf = remember(options) { options.toMap() }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = if (required) "$label *" else label,
+            style = MaterialTheme.typography.labelMedium,
+            color = Ink2,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(FieldBg)
+                .clickable { query = ""; open = true }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (selected.isEmpty()) placeholder
+                else selected.joinToString("، ") { labelOf[it] ?: it },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected.isEmpty()) Ink3 else Ink,
+                modifier = Modifier.weight(1f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (selected.isNotEmpty()) {
+                Box(
+                    Modifier
+                        .padding(horizontal = 6.dp)
+                        .clip(CircleShape)
+                        .background(BrandLight)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        selected.size.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BrandDark
+                    )
+                }
+            }
+            Icon(Icons.Filled.ExpandMore, contentDescription = null, tint = Ink3)
+        }
+    }
+
+    if (open) {
+        val picked = remember { mutableStateListOf<String>().apply { addAll(selected) } }
+        // انتخاب‌شده‌ها بالای فهرست (ترتیب هنگام باز شدن پنجره ثابت می‌ماند)
+        val ordered = remember(options) {
+            options.filter { it.first in selected } + options.filter { it.first !in selected }
+        }
+        val q = query.trim()
+        val filtered = if (q.isEmpty()) ordered else ordered.filter {
+            it.second.contains(q, ignoreCase = true) ||
+                (searchText?.invoke(it.first)?.contains(q, ignoreCase = true) == true)
+        }
+        Dialog(onDismissRequest = { open = false }) {
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = GlassBar,
+                border = BorderStroke(1.dp, GlassStroke),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 600.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = label + if (picked.isEmpty()) "" else "  (${picked.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(searchPlaceholder, color = Ink3, fontSize = 13.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.small,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = FieldBg,
+                            focusedContainerColor = CardBg,
+                            focusedBorderColor = Brand,
+                            unfocusedBorderColor = Line
+                        )
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                        items(filtered, key = { it.first }) { (v, l) ->
+                            PickerRow(l, v in picked) {
+                                if (v in picked) picked.remove(v) else picked.add(v)
+                            }
+                        }
+                        if (filtered.isEmpty()) {
+                            item {
+                                Text(
+                                    "—",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { picked.clear() },
+                            enabled = picked.isNotEmpty(),
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small
+                        ) { Text(clearLabel) }
+                        Button(
+                            onClick = { onChange(picked.toList()); open = false },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            colors = ButtonDefaults.buttonColors(containerColor = Brand)
+                        ) { Text(doneLabel + if (picked.isEmpty()) "" else " (${picked.size})") }
+                    }
+                }
+            }
+        }
+    }
+}
+

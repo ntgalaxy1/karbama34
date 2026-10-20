@@ -287,7 +287,16 @@ object Catalog {
             jobKeys = jobs, trLevel = level, gender = gender,
             status = status, consent = true,
             createdAt = now - hoursAgo * h, lang = "fa",
-            phoneCountry = cc, phoneLocal = local, undertaking = und
+            phoneCountry = cc, phoneLocal = local, undertaking = und,
+            spokenLangs = when (id) {      // v45: نمونه‌ی «زبان‌هایی که بلدم»
+                "p1" -> listOf("fa", "tr")
+                "p2" -> listOf("fa", "azb", "tr", "en")
+                "p3" -> listOf("tr", "en", "de")
+                "p4" -> listOf("fa", "en", "ar")
+                "p5" -> listOf("fa", "bqi")
+                "p6" -> listOf("fa", "ar")
+                else -> listOf("fa")
+            }
         )
 
         // تعهدنامه‌های نمونه (متن امضا در اپ واقعی با انگشت کشیده می‌شود)

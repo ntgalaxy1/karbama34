@@ -75,6 +75,7 @@ fun DocumentSnapshot.toApplicant(): Applicant = Applicant(
     district = getString("district") ?: "",
     address = getString("address") ?: "",
     jobKeys = strList("jobKeys"),
+    spokenLangs = strList("spokenLangs"),
     trLevel = (getLong("trLevel") ?: 0L).toInt(),
     gender = getString("gender") ?: "",
     idPhotoUrl = getString("idPhotoUrl") ?: "",
@@ -87,6 +88,9 @@ fun DocumentSnapshot.toApplicant(): Applicant = Applicant(
     phoneLocal = getString("phoneLocal") ?: "",
     payStatus = getString("paymentStatus") ?: "",   // #34
     payAt = getLong("paymentAt") ?: 0L,             // #34
+    payMethod = getString("paymentMethod") ?: "",  // v38
+    payReference = getString("paymentReference") ?: "",
+    payReceiptUrl = getString("paymentReceiptUrl") ?: "",
     undertaking = (get("undertaking") as? Map<*, *>)?.let { m ->
         Undertaking(
             signed = m["signed"] as? Boolean ?: false,
@@ -128,6 +132,7 @@ fun Applicant.toMap(): Map<String, Any> = mapOf(
     "district" to district,
     "address" to address,
     "jobKeys" to jobKeys,
+    "spokenLangs" to spokenLangs,
     "trLevel" to trLevel,
     "gender" to gender,
     "idPhotoUrl" to idPhotoUrl,
@@ -140,5 +145,8 @@ fun Applicant.toMap(): Map<String, Any> = mapOf(
     "phoneLocal" to phoneLocal,
     "paymentStatus" to payStatus,      // #34
     "paymentAt" to payAt,              // #34
+    "paymentMethod" to payMethod,      // v38
+    "paymentReference" to payReference,
+    "paymentReceiptUrl" to payReceiptUrl,
     "undertaking" to (undertaking?.toMap() ?: emptyMap<String, Any>())
 )

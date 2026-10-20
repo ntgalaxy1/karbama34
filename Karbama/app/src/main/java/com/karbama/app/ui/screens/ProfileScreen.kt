@@ -35,6 +35,7 @@ import com.karbama.app.ui.i18n.SUPPORTED_LANGS
 import com.karbama.app.ui.i18n.langFlag
 import com.karbama.app.ui.i18n.langLabel
 import com.karbama.app.ui.theme.*
+import com.karbama.app.util.WorldLanguages
 
 @Composable
 fun ProfileContent(
@@ -51,7 +52,10 @@ fun ProfileContent(
     onLogout: () -> Unit,
     likedJobs: List<Job> = emptyList(),          // #28
     onOpenJob: (Job) -> Unit = {},               // #28
-    onUnlike: (Job) -> Unit = {}                 // #28
+    onUnlike: (Job) -> Unit = {},                // #28
+    adsFee: Long = 0L,                           // #34
+    adsLocked: Boolean = false,                  // #34
+    onGoPay: () -> Unit = {}                     // #34
 ) {
     SystemBars(darkIcons = false)
     var showUndertaking by remember { mutableStateOf(false) }
@@ -155,6 +159,15 @@ fun ProfileContent(
                 PrimaryButton(text = loc["go_register"], onClick = onRegister)
                 Spacer(Modifier.height(20.dp))
             } else {
+                // ---------------- #34: وضعیت پرداخت هزینه‌ی نمایش آگهی‌ها ----------------
+                PayStatusCard(
+                    loc = loc,
+                    applicant = applicant,
+                    adsFee = adsFee,
+                    onGoPay = onGoPay
+                )
+                Spacer(Modifier.height(12.dp))
+
                 // ---------------- تخصص‌ها و زبان ----------------
                 SectionCard {
                     SectionTitle(loc["my_specialties"])
@@ -194,6 +207,15 @@ fun ProfileContent(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
+                    )
+                    // v45: «زبان‌هایی که بلدم»
+                    Spacer(Modifier.height(16.dp))
+                    SectionTitle("🗣 " + loc["spoken_langs"])
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        WorldLanguages.labels(applicant.spokenLangs, loc.code).ifEmpty { "—" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink
                     )
                 }
 
@@ -281,9 +303,12 @@ fun ProfileContent(
 
             // ---------------- #28: آگهی‌های پسندیده ----------------
             SectionCard {
-                SectionTitle("❤ " + loc["pasandide"] + " (" + likedJobs.size + ")")
+                SectionTitle(if (adsLocked) "🔒 " + loc["pasandide"] else "❤ " + loc["pasandide"] + " (" + likedJobs.size + ")")
                 Spacer(Modifier.height(8.dp))
-                if (likedJobs.isEmpty()) {
+                if (adsLocked) {
+                    // #34: تا پرداخت هزینه، جزئیات آگهی‌های پسندیده هم بسته است
+                    LikesLockedNote(loc = loc, onGoPay = onGoPay)
+                } else if (likedJobs.isEmpty()) {
                     Text(
                         loc["liked_empty"],
                         style = MaterialTheme.typography.bodySmall,
@@ -332,11 +357,7 @@ fun ProfileContent(
                                 )
                             }
                             IconButton(onClick = { onUnlike(job) }) {
-                                Icon(
-                                    Icons.Filled.Favorite,
-                                    contentDescription = loc["unlike"],
-                                    tint = Pink
-                                )
+                                Text("❤️", fontSize = 18.sp)
                             }
                         }
                     }

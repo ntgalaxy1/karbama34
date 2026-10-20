@@ -1,0 +1,51 @@
+
+/** انتخاب پیش‌شماره از میان همه‌ی کشورهای دنیا (v45) */
+@Composable
+fun PhoneCountryPicker(
+    label: String,
+    country: PhoneCountry,
+    uiLang: String,
+    searchPlaceholder: String,
+    onSelect: (PhoneCountry) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val options = remember(uiLang) {
+        PhoneCountry.sortedFor(uiLang).map { it.iso to it.label(uiLang) }
+    }
+    PickerField(
+        label = label,
+        value = country.label(uiLang),
+        placeholder = "",
+        options = options,
+        onSelect = { onSelect(PhoneCountry.ofIso(it)) },
+        modifier = modifier,
+        searchable = true,
+        searchPlaceholder = searchPlaceholder,
+        matcher = { v, q -> PhoneCountry.ofIso(v).searchText(uiLang).contains(q, ignoreCase = true) }
+    )
+}
+
+/** «زبان‌هایی که بلدم» — چندانتخابی از همه‌ی زبان‌های زنده‌ی دنیا (v45) */
+@Composable
+fun SpokenLangsField(
+    loc: Loc,
+    selected: List<String>,
+    onChange: (List<String>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val langs = remember(loc.code) { WorldLanguages.all(loc.code) }
+    val options = remember(langs) { langs.map { it.code to it.label } }
+    val search = remember(langs) { langs.associate { it.code to it.search } }
+    MultiPickerField(
+        label = loc["spoken_langs"],
+        selected = selected,
+        options = options,
+        onChange = onChange,
+        placeholder = loc["spoken_langs_ph"],
+        searchPlaceholder = loc["search_lang"],
+        doneLabel = loc["confirm_sel"],
+        clearLabel = loc["clear_sel"],
+        modifier = modifier,
+        searchText = { search[it] ?: "" }
+    )
+}

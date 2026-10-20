@@ -399,6 +399,8 @@ fun JobEditorScreen(
                 }
 
                 Spacer(Modifier.height(8.dp))
+                // v48: در حالت متصل ویدیوی داخل گوشی ذخیره نمی‌شود → فقط با لینک
+                val connected = com.karbama.app.data.Service.db != null
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GhostButton(
                         text = loc["media_add_photo"],
@@ -406,11 +408,22 @@ fun JobEditorScreen(
                         onClick = { pickPhoto.launch("image/*") },
                         modifier = Modifier.weight(1f)
                     )
-                    GhostButton(
-                        text = loc["media_add_video"],
-                        icon = Icons.Filled.PlayArrow,
-                        onClick = { pickVideo.launch("video/*") },
-                        modifier = Modifier.weight(1f)
+                    if (!connected) {
+                        GhostButton(
+                            text = loc["media_add_video"],
+                            icon = Icons.Filled.PlayArrow,
+                            onClick = { pickVideo.launch("video/*") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                if (connected) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "🎬 " + loc["media_video_link_hint"],
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ink3,
+                        lineHeight = 20.sp
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -451,6 +464,7 @@ fun EditProfileScreen(
     var district by remember { mutableStateOf(applicant.district) } // شهرستان
     var address by remember { mutableStateOf(applicant.address) }
     val jobKeys = remember { mutableStateListOf<String>().apply { addAll(applicant.jobKeys) } }
+    var spokenLangs by remember { mutableStateOf(applicant.spokenLangs) }   // v45
     var level by remember { mutableStateOf(applicant.trLevel) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -475,7 +489,7 @@ fun EditProfileScreen(
                             when {
                                 firstName.isBlank() || lastName.isBlank() -> error = loc["required_field"]
                                 !PhoneUtils.isValid(phoneCountry, phone) ->
-                                    error = loc[if (phoneCountry == PhoneCountry.IRAN) "err_phone_ir" else "err_phone"]
+                                    error = loc[phoneErrorKey(phoneCountry)]
                                 city.isBlank() -> error = loc["err_city"]
                                 jobKeys.isEmpty() -> error = loc["err_job"]
                                 else -> {
@@ -492,6 +506,7 @@ fun EditProfileScreen(
                                             district = district,
                                             address = address.trim(),
                                             jobKeys = jobKeys.toList(),
+                                            spokenLangs = spokenLangs,
                                             trLevel = level
                                         )
                                     )
@@ -542,27 +557,19 @@ fun EditProfileScreen(
                     label = loc["father_name"]
                 )
                 Spacer(Modifier.height(16.dp))
-                Text(
-                    loc["phone_country"],
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Ink2,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                PhoneCountryPicker(
+                    label = loc["phone_country"],
+                    country = phoneCountry,
+                    uiLang = loc.code,
+                    searchPlaceholder = loc["search_country"],
+                    onSelect = { phoneCountry = it }
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PhoneCountry.values().forEach { c ->
-                        SelectChip(
-                            text = "${c.flag} +${c.code}",
-                            selected = phoneCountry == c,
-                            onClick = { phoneCountry = c }
-                        )
-                    }
-                }
                 Spacer(Modifier.height(12.dp))
                 KbField(
                     value = phone,
                     onValueChange = { phone = it },
                     label = loc["phone"],
-                    placeholder = phoneCountry.example,
+                    placeholder = phoneCountry.example.ifEmpty { "123 456 789" },
                     prefix = "+" + phoneCountry.code,
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Done
@@ -655,6 +662,14 @@ fun EditProfileScreen(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = Line)
+                Spacer(Modifier.height(16.dp))
+                SpokenLangsField(
+                    loc = loc,
+                    selected = spokenLangs,
+                    onChange = { spokenLangs = it }
                 )
             }
             Spacer(Modifier.height(24.dp))

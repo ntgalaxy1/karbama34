@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -68,6 +69,7 @@ private object Routes {
     const val JOB_EDIT = "job_edit/{id}"
     const val APPLICANT = "applicant/{id}"
     const val EDIT_PROFILE = "edit_profile"
+    const val PAY = "pay"                      // #35: صفحه‌ی پرداخت هزینه‌ی نمایش آگهی‌ها
     const val LANGUAGE_PICK = "language_pick"
 
     fun job(id: String) = "job/$id"
@@ -168,6 +170,7 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                         onEditJob = { nav.navigate(Routes.jobEdit(it.id)) },
                         onOpenApplicant = { nav.navigate(Routes.applicant(it.id)) },
                         onOpenRegister = { nav.navigate(Routes.REGISTER) },
+                        onOpenPay = { nav.navigate(Routes.PAY) },   // #35
                         onLoggedOut = {
                             nav.navigate(Routes.LOGIN) {
                                 popUpTo(Routes.MAIN) { inclusive = true }
@@ -181,15 +184,16 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                     val id = entry.arguments?.getString("id") ?: ""
                     val job = jobs.firstOrNull { it.id == id }
                     if (!vm.adsUnlocked) {
-                        // #34: تا پرداخت هزینه، صفحه‌ی کامل آگهی هم بسته است
-                        PaywallScreen(
+                        // #35: تا تأیید پرداخت، به‌جای آگهی → صفحه‌ی پرداخت
+                        PaymentScreen(
                             loc = loc,
                             applicant = vm.myProfile,
                             adsFee = vm.adsFee,
                             brokerCard = vm.brokerCard,
                             brokerHolder = vm.brokerHolder,
-                            onRequestPay = { vm.requestAdsPayment() },
+                            onRequestPay = { reference, receipt -> vm.requestManualAdsPayment(reference, receipt) },
                             onRecheck = { vm.refreshMyPayment() },
+                            onDone = { nav.popBackStack() },
                             onBack = { nav.popBackStack() }
                         )
                     } else if (job != null) {
@@ -210,15 +214,23 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
 
                 // ---------- ورود به برنامه (کاربر و مدیر) ----------
                 composable(Routes.LOGIN) {
+                    val savedLogin = remember { vm.prefs.rememberedLogin() }
                     LoginScreen(
                         loc = loc,
                         busy = vm.busy,
+                        savedUsername = savedLogin?.username.orEmpty(),
+                        savedPassword = savedLogin?.password.orEmpty(),
                         onLogin = { user, pass, cb ->
                             vm.loginUser(user, pass) { outcome ->
                                 cb(outcome)
                                 when (outcome) {
                                     // مرحله‌ی دوم (کد 2FA) در همان صفحه پرسیده می‌شود
-                                    LoginOutcome.ADMIN_2FA, LoginOutcome.FAIL -> Unit
+                                    LoginOutcome.ADMIN_2FA,
+                                    LoginOutcome.FAIL,
+                                    LoginOutcome.ADMIN_AUTH_REJECTED,
+                                    LoginOutcome.ADMIN_NOT_AUTHORIZED,
+                                    LoginOutcome.ADMIN_NETWORK_ERROR,
+                                    LoginOutcome.ADMIN_FIREBASE_ERROR -> Unit
                                     else -> nav.navigate(Routes.MAIN) {
                                         popUpTo(Routes.LOGIN) { inclusive = true }
                                     }
@@ -299,6 +311,21 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                     }
                 }
 
+                // ---------- #35: صفحه‌ی پرداخت هزینه‌ی نمایش آگهی‌ها ----------
+                composable(Routes.PAY) {
+                    PaymentScreen(
+                        loc = loc,
+                        applicant = vm.myProfile,
+                        adsFee = vm.adsFee,
+                        brokerCard = vm.brokerCard,
+                        brokerHolder = vm.brokerHolder,
+                        onRequestPay = { reference, receipt -> vm.requestManualAdsPayment(reference, receipt) },
+                        onRecheck = { vm.refreshMyPayment() },
+                        onDone = { nav.popBackStack() },
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+
                 // ---------- ویرایش پروفایل ----------
                 composable(Routes.EDIT_PROFILE) {
                     val me = vm.myProfile
@@ -332,6 +359,7 @@ private fun MainShell(
     onEditJob: (Job) -> Unit,
     onOpenApplicant: (com.karbama.app.data.model.Applicant) -> Unit,
     onOpenRegister: () -> Unit,
+    onOpenPay: () -> Unit,                     // #35
     onLoggedOut: () -> Unit
 ) {
     var tab by remember { mutableIntStateOf(0) }
@@ -372,10 +400,7 @@ private fun MainShell(
                         selected = tab == 0,
                         onClick = { tab = 0 },
                         icon = {
-                            Icon(
-                                if (adsUnlocked) Icons.Filled.Home else Icons.Filled.Lock,
-                                contentDescription = null
-                            )
+                            Text(if (adsUnlocked) "🏠" else "🔒", fontSize = 20.sp)   // v46: ایموجی دمو
                         },
                         label = {
                             Text(
@@ -388,7 +413,7 @@ private fun MainShell(
                     NavigationBarItem(
                         selected = tab == 1,
                         onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                        icon = { Text("👤", fontSize = 20.sp) },
                         label = {
                             Text(loc["tab_profile"], style = MaterialTheme.typography.labelSmall)
                         },
@@ -398,7 +423,7 @@ private fun MainShell(
                     NavigationBarItem(
                         selected = tab == 2,
                         onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Call, contentDescription = null) },
+                        icon = { Text("☎️", fontSize = 20.sp) },
                         label = {
                             Text(loc["tab_contact"], style = MaterialTheme.typography.labelSmall)
                         },
@@ -426,11 +451,8 @@ private fun MainShell(
                     onOpenApplicant = onOpenApplicant,
                     brokerCard = vm.brokerCard,
                     brokerHolder = vm.brokerHolder,
-                    adminUser = vm.adminUsername,
-                    adminPass = vm.adminPassword,
-                    onSaveSettings = { card, user, pass ->
+                    onSaveSettings = { card ->
                         vm.saveBrokerSettings(card, vm.brokerHolder)
-                        vm.saveAdminCredentials(user, pass)
                     },
                     twoFAEnabled = vm.twoFactorEnabled,
                     twoFAPending = vm.twoFactorPending,
@@ -452,17 +474,15 @@ private fun MainShell(
                     }
                 )
 
-                // #34: کارجوی پرداخت‌نکرده فقط صفحه‌ی پرداخت را می‌بیند
-                tab == 0 -> if (!adsUnlocked) PaywallScreen(
+                // #35: صفحه‌ی اصلی همان صفحه‌ی قبلی است؛ فقط بخش آگهی‌ها
+                // تا تأیید پرداخت با پنل «نیاز به پرداخت» پوشیده می‌شود.
+                tab == 0 -> HomeContent(
                     loc = loc,
-                    applicant = vm.myProfile,
+                    me = vm.myProfile,
+                    adsLocked = !adsUnlocked,
                     adsFee = vm.adsFee,
                     brokerCard = vm.brokerCard,
-                    brokerHolder = vm.brokerHolder,
-                    onRequestPay = { vm.requestAdsPayment() },
-                    onRecheck = { vm.refreshMyPayment() }
-                ) else HomeContent(
-                    loc = loc,
+                    onGoPay = onOpenPay,
                     userName = vm.myProfile?.firstName ?: "",
                     jobs = visibleJobs,
                     filter = vm.filter,
@@ -497,7 +517,7 @@ private fun MainShell(
                     onUnlike = { vm.toggleLike(it.id) },
                     adsFee = vm.adsFee,            // #34
                     adsLocked = !adsUnlocked,      // #34
-                    onGoPay = { tab = 0 }          // #34
+                    onGoPay = onOpenPay            // #35: رفتن به صفحه‌ی پرداخت
                 )
 
                 tab == 2 -> ContactContent(loc = loc)

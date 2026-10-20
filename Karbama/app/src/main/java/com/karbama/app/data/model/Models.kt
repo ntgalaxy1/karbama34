@@ -54,6 +54,7 @@ data class Applicant(
     val district: String = "",          // شهرستان
     val address: String = "",           // آدرس کامل
     val jobKeys: List<String> = emptyList(),
+    val spokenLangs: List<String> = emptyList(),   // v45: «زبان‌هایی که بلدم» (کدهای ISO 639)
     val trLevel: Int = 0,               // ۰ تا ۱۰۰
     val gender: String = "",            // m | f
     val idPhotoUrl: String = "",
@@ -62,12 +63,16 @@ data class Applicant(
     val consent: Boolean = false,
     val createdAt: Long = 0L,
     val lang: String = "fa",
-    val phoneCountry: String = "TR",    // TR | IR
+    val phoneCountry: String = "TR",    // ISO2 هر کشور (v45)
     val phoneLocal: String = "",        // رقم‌های محلی بدون پیش‌شماره
     val undertaking: Undertaking? = null,
     // #34: وضعیت پرداخت «هزینه نمایش آگهی‌ها» — "" پرداخت‌نشده | pending در انتظار تأیید | paid تأییدشده
     val payStatus: String = "",
-    val payAt: Long = 0L
+    val payAt: Long = 0L,
+    // v38 manual payment evidence. Never unlocks ads by itself; manager confirmation is still required.
+    val payMethod: String = "",          // manual | zarinpal | iyzico
+    val payReference: String = "",       // bank / card-to-card transaction reference
+    val payReceiptUrl: String = ""       // Storage URL (or local demo file path) for the receipt image
 ) {
     val fullName: String get() = "$firstName $lastName".trim()
 

@@ -121,11 +121,9 @@ fun JobDetailScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Business,
-                                    contentDescription = null,
-                                    tint = Ink3,
-                                    modifier = Modifier.size(14.dp)
+                                Text(
+                                    "🏢",
+                                    fontSize = 12.sp
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(job.company, style = MaterialTheme.typography.bodySmall)

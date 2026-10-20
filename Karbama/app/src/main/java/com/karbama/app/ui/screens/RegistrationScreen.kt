@@ -82,6 +82,7 @@ fun RegistrationScreen(
     var district by remember { mutableStateOf("") }    // شهرستان
     var address by remember { mutableStateOf("") }
     val jobKeys = remember { mutableStateListOf<String>() }
+    var spokenLangs by remember { mutableStateOf(listOf<String>()) }   // v45
     var jobQuery by remember { mutableStateOf("") }
     var level by remember { mutableStateOf(40) }
     var idPhoto by remember { mutableStateOf<PickedPhoto?>(null) }
@@ -99,8 +100,7 @@ fun RegistrationScreen(
             !AuthUtils.usernameIsValid(username) -> loc["username_hint"]
             LocalStore.findByUsername(username) != null -> loc["username_taken"]
             !AuthUtils.passwordIsValid(password) -> loc["password_short"]
-            !PhoneUtils.isValid(phoneCountry, phone) ->
-                loc[if (phoneCountry == PhoneCountry.IRAN) "err_phone_ir" else "err_phone"]
+            !PhoneUtils.isValid(phoneCountry, phone) -> loc[phoneErrorKey(phoneCountry)]
             else -> null
         }
         2 -> if (city.isBlank() || district.isBlank()) loc["err_city"]
@@ -211,6 +211,7 @@ fun RegistrationScreen(
                                             district = district,
                                             address = address.trim(),
                                             jobKeys = jobKeys.toList(),
+                                            spokenLangs = spokenLangs,
                                             trLevel = level,
                                             gender = gender,
                                             status = "new",
@@ -317,27 +318,20 @@ fun RegistrationScreen(
                             color = Ink3
                         )
                         Spacer(Modifier.height(16.dp))
-                        Text(
-                            loc["phone_country"],
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Ink2,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                        // v45: همه‌ی پیش‌شماره‌های دنیا با جست‌وجو
+                        PhoneCountryPicker(
+                            label = loc["phone_country"],
+                            country = phoneCountry,
+                            uiLang = loc.code,
+                            searchPlaceholder = loc["search_country"],
+                            onSelect = { phoneCountry = it; error = null }
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PhoneCountry.values().forEach { c ->
-                                SelectChip(
-                                    text = "${c.flag} +${c.code}",
-                                    selected = phoneCountry == c,
-                                    onClick = { phoneCountry = c; error = null }
-                                )
-                            }
-                        }
                         Spacer(Modifier.height(12.dp))
                         KbField(
                             value = phone,
                             onValueChange = { phone = it },
                             label = loc["phone"],
-                            placeholder = phoneCountry.example,
+                            placeholder = phoneCountry.example.ifEmpty { "123 456 789" },
                             prefix = "+" + phoneCountry.code,
                             required = true,
                             keyboardType = KeyboardType.Phone,
@@ -525,6 +519,21 @@ fun RegistrationScreen(
                             color = BrandDark,
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center
+                        )
+                        // v45: «زبان‌هایی که بلدم» — همه‌ی زبان‌های زنده‌ی دنیا
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider(color = Line)
+                        Spacer(Modifier.height(16.dp))
+                        SpokenLangsField(
+                            loc = loc,
+                            selected = spokenLangs,
+                            onChange = { spokenLangs = it }
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            loc["spoken_langs_hint"],
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Ink3
                         )
                     }
                 }
@@ -793,6 +802,13 @@ fun PhotoBox(
 
 /** اعتبارسنجی سریع شماره (برای فرم‌های دیگر) */
 fun isValidTrPhone(input: String): Boolean = PhoneUtils.isValid(PhoneCountry.TURKIYE, input)
+
+/** v45: کلید پیام خطای شماره بر اساس کشور */
+fun phoneErrorKey(c: PhoneCountry): String = when (c.iso) {
+    "IR" -> "err_phone_ir"
+    "TR" -> "err_phone"
+    else -> "err_phone_intl"
+}
 
 fun isValidEmail(input: String): Boolean =
     android.util.Patterns.EMAIL_ADDRESS.matcher(input.trim()).matches()

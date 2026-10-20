@@ -183,11 +183,9 @@ fun JobCard(
                         color = BrandDark
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.Schedule,
-                            contentDescription = null,
-                            tint = Ink3,
-                            modifier = Modifier.size(13.dp)
+                        Text(
+                            "🕒",
+                            fontSize = 11.sp
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(loc.timeAgo(job.publishedAt), style = MaterialTheme.typography.bodySmall)
@@ -261,7 +259,7 @@ fun TagChip(text: String, tone: TagTone = TagTone.Green) {
 @Composable
 fun LocationTag(text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = BrandDark, modifier = Modifier.size(13.dp))
+        Text("📍", fontSize = 11.sp)
         Spacer(Modifier.width(4.dp))
         Text(text, style = MaterialTheme.typography.bodySmall, color = BrandDark)
     }

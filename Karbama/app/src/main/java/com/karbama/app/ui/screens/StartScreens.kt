@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BusinessCenter
@@ -79,7 +80,8 @@ fun LanguageScreen(loc: Loc, onPick: (String) -> Unit) {
             )
             Spacer(Modifier.height(20.dp))
 
-            listOf("fa", "tr", "en").forEach { code ->
+            // چهار زبان پشتیبانی‌شده: فارسی، ترکی، انگلیسی و عربی.
+            listOf("fa", "tr", "en", "ar").forEach { code ->
                 LanguageRow(code = code, onClick = { onPick(code) })
                 Spacer(Modifier.height(8.dp))
             }
@@ -131,6 +133,7 @@ private fun LanguageRow(code: String, onClick: () -> Unit) {
                     when (code) {
                         "tr" -> "Türkiye'nin iş ilanları"
                         "en" -> "Job listings in Türkiye"
+                        "ar" -> "إعلانات الوظائف في تركيا"
                         else -> "آگهی‌های استخدام ترکیه"
                     },
                     style = MaterialTheme.typography.bodySmall
@@ -158,58 +161,85 @@ fun WelcomeScreen(
             .background(Bg)
             .verticalScroll(rememberScrollState())
     ) {
-        // هدر
-        Column(
+        // ---------- v44/v46: هیروی دمو (.hero) ----------
+        Box(
             Modifier
                 .fillMaxWidth()
-                .background(HeaderBrush)
-                .statusBarsPadding()
-                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(Brush.linearGradient(listOf(Color(0xFF088080), Color(0xFF0A7F91), Color(0xFF0A7F91))))
         ) {
-            BrandLogo(size = 76.dp, onDark = true)
-            Spacer(Modifier.height(12.dp))
-            Text(loc["app_name"], fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
-            Text(
-                loc["app_latin"],
-                fontSize = 11.sp,
-                letterSpacing = 4.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = 0.8f)
+            // دایره‌های تزئینی دمو (hero:before / hero:after)
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 70.dp, y = (-90).dp)
+                    .size(230.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
             )
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatBox(jobsCount.toString(), loc["stat_jobs"], Modifier.weight(1f))
-                StatBox(peopleCount.toString(), loc["stat_people"], Modifier.weight(1f))
-                StatBox("13", loc["stat_cities"], Modifier.weight(1f))
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-40).dp, y = 80.dp)
+                    .size(150.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+            )
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                BrandLogo(size = 74.dp, onDark = true)
+                Spacer(Modifier.height(16.dp))
+                Text(loc["app_name"], fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    loc["app_latin"],
+                    fontSize = 11.sp,
+                    letterSpacing = 4.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatBox(loc.n(jobsCount), loc["stat_jobs"], Modifier.weight(1f))
+                    StatBox(loc.n(peopleCount), loc["stat_people"], Modifier.weight(1f))
+                    StatBox(loc.n(13), loc["stat_cities"], Modifier.weight(1f))
+                }
             }
         }
 
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp)) {
             Text(
                 loc["welcome_title"],
-                style = MaterialTheme.typography.titleLarge
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = Ink
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 loc["welcome_sub"],
-                style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 26.sp
+                fontSize = 14.sp,
+                color = Ink2,
+                lineHeight = 28.sp
             )
             Spacer(Modifier.height(16.dp))
 
-            HowRow(Icons.Filled.BusinessCenter, loc["how_1"])
-            HowRow(Icons.Filled.Search, loc["how_2"])
-            HowRow(Icons.Filled.Send, loc["how_3"])
+            // دمو: 📋 تکمیل مشخصات متقاضی · 🔎 آگهی‌های استخدام · 📜 تعهدنامه
+            HowRow("📋", loc["how_1"])
+            HowRow("🔎", loc["how_2"])
+            HowRow("📜", loc["how_3"])
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
             PrimaryButton(text = "🚀 " + loc["start_btn"], onClick = onStart)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             GhostButton(
                 text = "🔑 " + loc["login_title"],
                 onClick = onLogin
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -217,25 +247,18 @@ fun WelcomeScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("🌐 ", fontSize = 14.sp)
                 Text(
-                    loc["language"] + ": ",
-                    style = MaterialTheme.typography.bodySmall
+                    "🌐 " + loc["language"] + ": ",
+                    fontSize = 13.sp,
+                    color = Ink3
                 )
                 Text(
                     langLabel(loc.code),
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = BrandDark
+                    color = Ink
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                loc["tagline"],
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
@@ -244,41 +267,44 @@ fun WelcomeScreen(
 private fun StatBox(value: String, label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.16f))
-            .padding(vertical = 8.dp),
+            .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(value, fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
             Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
         }
     }
 }
 
+/** ردیف «چطور کار می‌کند» دمو: کاشی ۳۴dp روشن با ایموجی + متن */
 @Composable
-private fun HowRow(icon: ImageVector, text: String) {
+private fun HowRow(emoji: String, text: String) {
     Row(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(11.dp))
+                .size(34.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(BrandLight),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = BrandDark, modifier = Modifier.size(18.dp))
+            Text(emoji, fontSize = 16.sp)
         }
         Spacer(Modifier.width(12.dp))
         Text(
             text,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 13.sp,
             color = Ink2,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Bold,
+            lineHeight = 24.sp,
+            modifier = Modifier.padding(top = 4.dp)
         )
     }
 }

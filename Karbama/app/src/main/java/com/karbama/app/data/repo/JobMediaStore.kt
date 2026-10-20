@@ -5,6 +5,7 @@ import com.karbama.app.data.Service
 import com.karbama.app.data.local.LocalPhotoCache
 import com.karbama.app.data.model.JobMedia
 import com.karbama.app.util.MediaUtil
+import com.karbama.app.util.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -14,8 +15,8 @@ import java.util.UUID
  * رسانه‌های آگهی (عکس و ویدیو) را قبل از ذخیره آماده می‌کند:
  *
  *  - فایلی که مدیر از گوشی انتخاب کرده (`content://…`):
- *      · اگر Firebase وصل باشد → در Storage آپلود می‌شود و لینک آن ذخیره می‌گردد
- *        (تا کارجو هم همان عکس/ویدیو را ببیند)
+ *      · اگر Firebase وصل باشد → عکس در Firestore (jobFiles) ذخیره می‌شود (v48)؛
+ *        ویدیوی داخل گوشی پشتیبانی نمی‌شود و باید به‌صورت لینک اضافه شود
  *      · در حالت نمایشی → داخل حافظه‌ی خود برنامه کپی می‌شود
  *  - لینک‌های اینترنتی و مسیرهای `res:` دست‌نخورده می‌مانند.
  *
@@ -34,36 +35,23 @@ object JobMediaStore {
 
     private suspend fun uploadOrCopy(jobKey: String, item: JobMedia): JobMedia {
         val ctx = Service.app
-        val bytes = ctx.contentResolver.openInputStream(Uri.parse(item.url))?.use { it.readBytes() }
-            ?: return item                          // نتوانستیم بخوانیم → همان مسیر قبلی بماند
         val video = item.type == com.karbama.app.data.model.MediaType.VIDEO
-        val ext = if (video) "mp4" else "jpg"
-        val name = "job_${jobKey}_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.$ext"
 
-        val storage = Service.storage
-        if (storage != null) {
-            val ref = storage.reference.child("jobs/$jobKey/$name")
-            ref.putBytes(bytes).await()
-            val url = ref.downloadUrl.await().toString()
-            // پوستر ویدیو (اگر از گوشی انتخاب شده) هم باید آپلود شود
-            val poster = if (video) uploadPoster(jobKey, item.poster, name) else item.poster
-            return item.copy(url = url, poster = poster)
+        if (Service.db != null) {
+            // v48: حالت متصل → عکس در Firestore؛ ویدیوی داخل گوشی جا نمی‌شود (باید لینک بگذارید)
+            if (video) throw IllegalArgumentException("device video not supported; use a link")
+            val bytes = ImageUtils.prepare(ctx, Uri.parse(item.url)) ?: return item
+            return item.copy(url = FirestoreFiles.putJobImage(jobKey, bytes))
         }
 
-        val path = LocalPhotoCache.saveFile(name, bytes)   // حالت نمایشی
+        // ---------- حالت نمایشی: کپی داخل حافظه‌ی برنامه ----------
+        val bytes = ctx.contentResolver.openInputStream(Uri.parse(item.url))?.use { it.readBytes() }
+            ?: return item
+        val ext = if (video) "mp4" else "jpg"
+        val name = "job_${jobKey}_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.$ext"
+        val path = LocalPhotoCache.saveFile(name, bytes)
         val poster = if (video) copyPoster(item.poster, name) else item.poster
         return item.copy(url = path.ifBlank { item.url }, poster = poster)
-    }
-
-    private suspend fun uploadPoster(jobKey: String, poster: String, base: String): String {
-        if (!MediaUtil.isDeviceFile(poster)) return poster
-        return runCatching {
-            val bytes = Service.app.contentResolver.openInputStream(Uri.parse(poster))
-                ?.use { it.readBytes() } ?: return poster
-            val ref = Service.storage!!.reference.child("jobs/$jobKey/poster_$base.jpg")
-            ref.putBytes(bytes).await()
-            ref.downloadUrl.await().toString()
-        }.getOrDefault(poster)
     }
 
     private fun copyPoster(poster: String, base: String): String {

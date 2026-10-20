@@ -79,7 +79,7 @@ fun MediaViewer(
             ) { page ->
                 val m = items[page]
                 if (m.type == MediaType.VIDEO) {
-                    VideoPane(m)
+                    VideoPane(m, loc)
                 } else {
                     ImagePane(m, onClose)
                 }
@@ -194,8 +194,37 @@ private fun ImagePane(m: JobMedia, onClose: () -> Unit) {
 
 /** ویدیو با پخش‌کننده‌ی خودِ اندروید (بدون کتابخانه‌ی اضافه) */
 @Composable
-private fun VideoPane(m: JobMedia) {
+private fun VideoPane(m: JobMedia, loc: Loc) {
     val ctx = LocalContext.current
+    // v48: لینک صفحه‌ی ویدیو (یوتیوب، آپارات و …) داخل VideoView پخش نمی‌شود → باز کردن در برنامه/مرورگر
+    val url = m.url.trim()
+    val isWebPage = (url.startsWith("http://") || url.startsWith("https://")) &&
+        !Regex("""\.(mp4|webm|3gp|mkv|m3u8)(\?.*)?$""", RegexOption.IGNORE_CASE).containsMatchIn(url)
+    if (isWebPage) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White,
+                modifier = Modifier.clickable {
+                    runCatching {
+                        ctx.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                }
+            ) {
+                Text(
+                    "▶  " + loc["media_open_video"],
+                    color = Ink,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
+                )
+            }
+        }
+        return
+    }
     AndroidView(
         factory = { c ->
             VideoView(c).apply {

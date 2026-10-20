@@ -132,7 +132,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.saveMyProfile(saved)
                 onDone(saved)
             }.onFailure {
-                message = "خطا: " + (it.message ?: "ثبت‌نام انجام نشد")
+                message = "⚠️ " + friendlyError(it, "err_register_failed")   // v47
             }
         }
     }
@@ -150,9 +150,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun logout() {
         myProfile = null
+        prefs.clearMyProfile()
         prefs.registered = false
         adminMode = AdminMode.NONE
         prefs.adminMode = AdminMode.NONE
+        // The encrypted remembered username/password intentionally stays on this device.
     }
 
     /** خروج از حساب مدیر و پایان نشست */
@@ -181,14 +183,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val adsUnlocked: Boolean
         get() = adminMode != AdminMode.NONE || (myProfile?.payStatus == "paid")
 
-    /** «واریز کردم» — کارجو درخواست بررسی پرداخت را می‌فرستد (منتظر تأیید مدیر) */
-    fun requestAdsPayment() {
+    /** v38: receipt + transaction reference are required before a manual request reaches manager review. */
+    fun requestManualAdsPayment(reference: String, receiptBytes: ByteArray) {
         val me = myProfile ?: return
-        val updated = me.copy(payStatus = "pending", payAt = System.currentTimeMillis())
-        myProfile = updated
-        prefs.saveMyProfile(updated)
-        viewModelScope.launch { applicantRepo.setPayment(updated, "pending") }
-        message = "📨 " + updated.payTrackCode
+        viewModelScope.launch {
+            busy = true
+            val result = withContext(Dispatchers.IO) {
+                applicantRepo.submitManualPayment(me, reference, receiptBytes)
+            }
+            busy = false
+            result.onSuccess { saved ->
+                myProfile = saved
+                prefs.saveMyProfile(saved)
+                message = "📨 " + saved.payTrackCode
+            }.onFailure {
+                message = "⚠️ " + friendlyError(it, "err_pay_failed")   // v47
+            }
+        }
     }
 
     /** مدیر: تأیید (paid) یا لغو ("" ) پرداخت یک متقاضی */
@@ -227,26 +238,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.brokerCard = card
         prefs.brokerHolder = holder
     }
-
-    // ---------- یوزرنیم و پسورد مدیر (قابل تغییر از تنظیمات پنل) ----------
-
-    var adminUsername by mutableStateOf(prefs.adminUsername)
-        private set
-
-    var adminPassword by mutableStateOf(prefs.adminPassword)
-        private set
-
-    /** ذخیره‌ی یوزرنیم و پسورد تازه‌ی مدیر */
-    fun saveAdminCredentials(user: String, pass: String) {
-        adminUsername = user.trim()
-        adminPassword = pass
-        prefs.adminUsername = adminUsername
-        prefs.adminPassword = adminPassword
-    }
-
-    /** آیا این یوزرنیم/پسورد، حساب مدیرِ همین دستگاه است؟ */
-    fun adminCredentialsMatch(user: String, pass: String): Boolean =
-        pass.isNotEmpty() && user.trim().equals(adminUsername, ignoreCase = true) && pass == adminPassword
 
     // ---------- ورود دومرحله‌ای (2FA / TOTP) ----------
 
@@ -314,6 +305,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** بعد از تأیید کد دومرحله‌ای، ورود مدیر را کامل می‌کند */
     fun completeAdminLogin() {
         myProfile = null
+        prefs.clearMyProfile()
         prefs.registered = false
         viewModelScope.launch {
             val m = AdminGate.currentMode()
@@ -420,7 +412,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * ورود به برنامه — یکی برای همه:
-     *  • مدیر: نام کاربری مدیر + رمز، یا ایمیل حساب Firebase + رمز → پنل مدیریت
+     *  • مدیر: فقط ایمیل و رمز حساب Firebase → پنل مدیریت واقعی
      *  • کاربر عادی: نام کاربری (یا شماره تلفن) + رمز خودش → قسمت شخصی
      */
     fun loginUser(user: String, pass: String, onResult: (LoginOutcome) -> Unit) {
@@ -430,44 +422,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        // ۱) مدیر با نام کاربری و رمز داخلی
-        if (adminCredentialsMatch(u, pass)) {
-            myProfile = null
-            prefs.registered = false
-            if (twoFactorEnabled) {
-                // مرحله‌ی دوم: کد ۶ رقمی برنامه‌ی Authenticator
-                onResult(LoginOutcome.ADMIN_2FA)
-                return
-            }
-            viewModelScope.launch {
-                val m = AdminGate.currentMode()
-                adminMode = m
-                prefs.adminMode = m
-                onResult(LoginOutcome.ADMIN)
-            }
-            return
-        }
-
-        // ۲) مدیر با ایمیل حساب Firebase
+        // مدیر فقط با ایمیل و رمز حساب Firebase وارد پنل واقعی می‌شود.
         if (AuthUtils.looksLikeEmail(u)) {
             viewModelScope.launch {
                 busy = true
-                val res = AdminGate.signIn(u, pass)
-                busy = false
-                if (res.getOrDefault(false)) {
-                    myProfile = null
-                    prefs.registered = false
-                    adminMode = AdminMode.LIVE
-                    prefs.adminMode = AdminMode.LIVE
-                    onResult(LoginOutcome.ADMIN)
-                } else {
-                    onResult(LoginOutcome.FAIL)
+                when (AdminGate.signIn(u, pass)) {
+                    AdminGate.LoginResult.SUCCESS -> {
+                        prefs.saveRememberedLogin(u, pass)
+                        myProfile = null
+                        prefs.clearMyProfile()
+                        prefs.registered = false
+                        adminMode = AdminMode.LIVE
+                        prefs.adminMode = AdminMode.LIVE
+                        busy = false
+                        onResult(LoginOutcome.ADMIN)
+                    }
+                    AdminGate.LoginResult.AUTH_REJECTED -> {
+                        busy = false
+                        onResult(LoginOutcome.ADMIN_AUTH_REJECTED)
+                    }
+                    AdminGate.LoginResult.NOT_ADMIN -> {
+                        busy = false
+                        onResult(LoginOutcome.ADMIN_NOT_AUTHORIZED)
+                    }
+                    AdminGate.LoginResult.NETWORK_ERROR -> {
+                        busy = false
+                        onResult(LoginOutcome.ADMIN_NETWORK_ERROR)
+                    }
+                    else -> {
+                        busy = false
+                        onResult(LoginOutcome.ADMIN_FIREBASE_ERROR)
+                    }
                 }
             }
             return
         }
 
-        // ۳) کاربر عادی
+        // کاربر عادی
         if (Service.ready) {
             viewModelScope.launch {
                 busy = true
@@ -476,7 +467,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (remote != null && remote.passwordHash.isNotEmpty() &&
                     remote.passwordHash == AuthUtils.hash(pass)
                 ) {
-                    openSession(remote)
+                    openSession(remote, u, pass)
                     onResult(LoginOutcome.USER)
                 } else {
                     onResult(LoginOutcome.FAIL)
@@ -487,7 +478,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (local != null && local.passwordHash.isNotEmpty() &&
                 local.passwordHash == AuthUtils.hash(pass)
             ) {
-                openSession(local)
+                openSession(local, u, pass)
                 onResult(LoginOutcome.USER)
             } else {
                 onResult(LoginOutcome.FAIL)
@@ -496,7 +487,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** باز کردن قسمت شخصی کاربر */
-    private fun openSession(a: Applicant) {
+    private fun openSession(a: Applicant, username: String, password: String) {
+        prefs.saveRememberedLogin(username, password)
         myProfile = a
         prefs.saveMyProfile(a)
         prefs.registered = true
@@ -505,31 +497,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             syncUserActivity()
     }
 
-    fun adminPasswordLogin(password: String, onResult: (Boolean) -> Unit) {
-        if (password != adminPassword && !AdminGate.passwordIsCorrect(password)) {
-            onResult(false)
-            return
-        }
-        viewModelScope.launch {
-            val mode = AdminGate.currentMode()
-            adminMode = mode
-            prefs.adminMode = mode
-            onResult(true)
-        }
-    }
-
     fun adminAccountLogin(email: String, password: String, onResult: (Boolean, Boolean) -> Unit) {
         viewModelScope.launch {
             busy = true
-            val res = AdminGate.signIn(email, password)
+            val result = AdminGate.signIn(email, password)
             busy = false
-            val isAdmin = res.getOrDefault(false)
-            if (isAdmin) {
+            if (result == AdminGate.LoginResult.SUCCESS) {
                 adminMode = AdminMode.LIVE
                 prefs.adminMode = AdminMode.LIVE
                 onResult(true, true)
             } else {
-                onResult(false, res.isSuccess)
+                onResult(false, result != AdminGate.LoginResult.AUTH_REJECTED)
             }
         }
     }
@@ -582,4 +560,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun loc(): Loc = Loc(lang)
+
+    /**
+     * v47: پیام خطای قابل‌فهم به زبان کاربر به‌جای متن خام انگلیسی Firebase.
+     * فقط یک کد کوتاه و امن (مثل storage:-13010) کنار پیام می‌آید؛ هیچ داده‌ی حساب یا کلیدی نه.
+     */
+    private fun friendlyError(e: Throwable, fallbackKey: String): String {
+        val l = loc()
+        val (key, code) = when (e) {
+            is com.google.firebase.storage.StorageException -> when (e.errorCode) {
+                com.google.firebase.storage.StorageException.ERROR_OBJECT_NOT_FOUND,
+                com.google.firebase.storage.StorageException.ERROR_BUCKET_NOT_FOUND,
+                com.google.firebase.storage.StorageException.ERROR_PROJECT_NOT_FOUND -> "err_storage_missing"
+                com.google.firebase.storage.StorageException.ERROR_NOT_AUTHORIZED,
+                com.google.firebase.storage.StorageException.ERROR_NOT_AUTHENTICATED -> "err_storage_denied"
+                com.google.firebase.storage.StorageException.ERROR_QUOTA_EXCEEDED -> "err_storage_quota"
+                com.google.firebase.storage.StorageException.ERROR_RETRY_LIMIT_EXCEEDED -> "err_network"
+                else -> fallbackKey
+            } to "storage:${e.errorCode}"
+            is com.google.firebase.firestore.FirebaseFirestoreException -> when (e.code) {
+                com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED -> "err_db_denied"
+                com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAVAILABLE -> "err_network"
+                else -> fallbackKey
+            } to "firestore:${e.code.name}"
+            is com.google.firebase.FirebaseNetworkException -> "err_network" to "network"
+            is com.google.firebase.auth.FirebaseAuthException -> fallbackKey to e.errorCode
+            else -> fallbackKey to e.javaClass.simpleName
+        }
+        return l[key] + "\n(\u200E" + code + ")"
+    }
 }

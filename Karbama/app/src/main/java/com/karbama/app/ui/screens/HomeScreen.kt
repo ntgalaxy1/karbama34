@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Contract
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.JobFilter
@@ -40,6 +41,11 @@ fun HomeContent(
     filter: JobFilter,
     appliedIds: Set<String>,
     likedIds: Set<String> = emptySet(),          // #28
+    me: Applicant? = null,                       // #35: کارجوی وارد‌شده (وضعیت پرداخت)
+    adsLocked: Boolean = false,                  // #35: بخش آگهی‌ها تا پرداخت پوشیده است
+    adsFee: Long = 500L,                        // #35
+    brokerCard: String = "",                     // #35
+    onGoPay: () -> Unit = {},                    // #35: رفتن به صفحه‌ی پرداخت
     loading: Boolean,
     onFilterChange: (JobFilter) -> Unit,
     onOpenJob: (Job) -> Unit,
@@ -82,7 +88,7 @@ fun HomeContent(
                     }
                 }
                 IconButton(onClick = onLanguage) {
-                    Icon(Icons.Filled.Language, contentDescription = null, tint = Color.White)
+                    Text("🌐", fontSize = 20.sp)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -93,7 +99,7 @@ fun HomeContent(
                     Text(loc["search_jobs_hint"], color = Ink3, fontSize = 14.sp)
                 },
                 leadingIcon = {
-                    Icon(Icons.Filled.Search, contentDescription = null, tint = Ink3)
+                    Text("🔎", fontSize = 16.sp)
                 },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -217,7 +223,23 @@ fun HomeContent(
             }
         }
 
-        if (loading) {
+        if (adsLocked) {
+            // #35: صفحه همان صفحه است؛ فقط جای فهرست آگهی‌ها → پنل «نیاز به پرداخت»
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                AdsLockPanel(
+                    loc = loc,
+                    applicant = me,
+                    adsFee = adsFee,
+                    brokerCard = brokerCard,
+                    jobsCount = jobs.size,
+                    onGoPay = onGoPay
+                )
+            }
+        } else if (loading) {
             LoadingBox(loc["loading"])
         } else if (jobs.isEmpty()) {
             EmptyState(
@@ -284,7 +306,7 @@ fun LoadErrorBox(text: String, retryLabel: String, onRetry: () -> Unit) {
                 .background(DangerLight),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Refresh, contentDescription = null, tint = Danger)
+            Text("🔄", fontSize = 22.sp)
         }
         Spacer(Modifier.height(12.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium, color = Ink2)

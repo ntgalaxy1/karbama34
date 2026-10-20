@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.karbama.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
@@ -53,6 +55,10 @@ import com.karbama.app.data.sample.Catalog
 import com.karbama.app.ui.components.*
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.theme.*
+import com.karbama.app.util.WorldLanguages
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.Dp
 
 // ==========================================================
 // ورود مدیر
@@ -211,9 +217,7 @@ fun AdminContent(
     onOpenApplicant: (Applicant) -> Unit,
     brokerCard: String,
     brokerHolder: String,
-    adminUser: String,
-    adminPass: String,
-    onSaveSettings: (String, String, String) -> Unit,
+    onSaveSettings: (String) -> Unit,
     twoFAEnabled: Boolean,
     twoFAPending: Boolean,
     twoFASecret: String,
@@ -224,6 +228,9 @@ fun AdminContent(
     onDisable2FA: () -> Unit,
     onSetStatus: (String, String) -> Unit,
     onSetFee: (Applicant, Long) -> Unit,
+    adsFee: Long = 6000L,                                   // #34: هزینه‌ی نمایش آگهی‌ها
+    onSaveAdsFee: (Long) -> Unit = {},                      // #34
+    onSetPayment: (Applicant, String) -> Unit = { _, _ -> },  // #34: تأیید/لغو پرداخت
     onExit: () -> Unit
 ) {
     SystemBars(darkIcons = false)
@@ -233,6 +240,7 @@ fun AdminContent(
     var peopleQuery by remember { mutableStateOf("") }
     var cityFilter by remember { mutableStateOf("") }
     var specFilter by remember { mutableStateOf("") }
+    var langFilter by remember { mutableStateOf("") }   // v45: زبان‌هایی که بلد است
     var minLevel by remember { mutableStateOf(0) }
     var statusFilter by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<Job?>(null) }   // #26: آگهی‌ای که منتظر تأیید حذف است
@@ -250,7 +258,7 @@ fun AdminContent(
     }
 
     val visiblePeople = remember(
-        applicants, peopleQuery, cityFilter, specFilter, minLevel, statusFilter, loc.code
+        applicants, peopleQuery, cityFilter, specFilter, langFilter, minLevel, statusFilter, loc.code
     ) {
         applicants.filter { p ->
             val textOk = peopleQuery.isBlank() ||
@@ -258,167 +266,165 @@ fun AdminContent(
                 p.phone.contains(peopleQuery) ||
                 p.email.contains(peopleQuery, ignoreCase = true) ||
                 p.city.contains(peopleQuery, ignoreCase = true) ||
-                p.jobKeys.any { loc.jobTitle(it).contains(peopleQuery, ignoreCase = true) }
+                p.jobKeys.any { loc.jobTitle(it).contains(peopleQuery, ignoreCase = true) } ||
+                p.spokenLangs.any { WorldLanguages.label(it, loc.code).contains(peopleQuery, ignoreCase = true) }
+            val langOk = langFilter.isEmpty() || p.spokenLangs.contains(langFilter)
             val cityOk = cityFilter.isEmpty() || p.city == cityFilter
             val specOk = specFilter.isEmpty() || p.jobKeys.contains(specFilter)
             val levelOk = p.trLevel >= minLevel
-            val statusOk = statusFilter.isEmpty() || p.status == statusFilter
-            textOk && cityOk && specOk && levelOk && statusOk
+            val statusOk = statusFilter.isEmpty() || p.status.ifEmpty { "new" } == statusFilter
+            textOk && cityOk && specOk && langOk && levelOk && statusOk
         }.sortedByDescending { it.createdAt }
     }
+
+    // v46: عین دمو — هر تب یک صفحه‌ی اسکرول‌شونده؛ تب‌ها (قرصی) بالای همان صفحه
+    val statusCounts = remember(applicants) {
+        applicants.groupingBy { it.status.ifEmpty { "new" } }.eachCount()
+    }
+    // v45: فیلتر «زبان‌هایی که بلد است» — زبان‌های متقاضیان فعلی بالای فهرست
+    val worldLangs = remember(loc.code) { WorldLanguages.all(loc.code) }
+    val langOptions = remember(worldLangs, applicants) {
+        val used = applicants.flatMap { it.spokenLangs }.groupingBy { it }.eachCount()
+        val (u, rest) = worldLangs.partition { used.containsKey(it.code) }
+        u.sortedByDescending { used[it.code] ?: 0 }
+            .map { it.code to "${it.label}  (${loc.n(used[it.code] ?: 0)})" } +
+            rest.map { it.code to it.label }
+    }
+    val langSearch = remember(worldLangs) { worldLangs.associate { it.code to it.search } }
 
     Scaffold(
         containerColor = Bg,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            // #33: نوار «حالت نمایشی / متصل به Firebase» از بالای برنامه حذف شد
-            TealTopBar(title = loc["admin_panel"]) {
-                AdminAddButton(text = loc["add_listing"], onClick = onNewJob)   // #27
-                AdminExitButton(text = loc["logout"], onClick = onExit)
-            }
+            // دمو: 🛡️ پنل مدیریت  [+]  [خروج از حساب] — در تنظیمات: ⚙️ تنظیمات کارگزار
+            AdminHeader(
+                icon = if (tab == 2) "⚙️" else "🛡️",
+                title = if (tab == 2) loc["und_adminSettings"] else loc["admin_panel"],
+                addLabel = loc["add_listing"],
+                onAdd = onNewJob,
+                exitLabel = loc["logout"],
+                onExit = onExit
+            )
         },
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            TabRow(
-                selectedTabIndex = tab,
-                containerColor = GlassBar,
-                contentColor = BrandDark
-            ) {
-                Tab(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    text = { Text(loc["tab_listings"] + " (" + loc.n(jobs.size) + ")") }
-                )
-                Tab(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    text = { Text(loc["tab_applicants"] + " (" + loc.n(applicants.size) + ")") }
-                )
-                Tab(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
-                    text = { Text(loc["und_tabSettings"]) }
-                )
-            }
-
-            // ---------- آمار (یک پله پایین‌تر: زیر دکمه‌های تب) ----------
-            Row(
+        when (tab) {
+            0 -> LazyColumn(
                 Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard(
-                    loc.n(jobs.count { it.active }),
-                    loc["stats_jobs"],
-                    BrandDark,
-                    Modifier.weight(1f)
-                )
-                StatCard(
-                    loc.n(applicants.size),
-                    loc["stats_people"],
-                    Purple,
-                    Modifier.weight(1f),
-                    onClick = { tab = 1; statusFilter = "" }
-                )
-                StatCard(
-                    loc.n(applicants.count { it.status == "new" }),
-                    loc["stats_new"],
-                    WarnStrong,
-                    Modifier.weight(1f),
-                    onClick = { tab = 1; statusFilter = "new" }
-                )
-            }
-
-            if (tab == 0) {
-                // ============ آگهی‌ها ============
-                Column(Modifier.fillMaxSize()) {
-                    OutlinedTextField(
-                        value = jobQuery,
-                        onValueChange = { jobQuery = it },
-                        placeholder = { Text(loc["search_jobs_hint"], color = Ink3, fontSize = 13.sp) },
-                        leadingIcon = { Icon(Icons.Filled.Search, null, tint = Ink3) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = CardBg,
-                            focusedContainerColor = CardBg,
-                            focusedBorderColor = Brand,
-                            unfocusedBorderColor = Line
+                item { AdminTabs(loc, tab, applicants.size) { tab = it } }
+                // ---------- آمار (فقط در تب آگهی‌ها، مثل دمو) ----------
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatCard(
+                            loc.n(jobs.count { it.active }), loc["stats_jobs"], BrandDark,
+                            Modifier.weight(1f)
                         )
-                    )
-                    LazyColumn(
-                        Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (visibleJobs.isEmpty()) {
-                            item {
-                                EmptyState("📭", loc["no_listings"])
-                            }
-                        }
-                        items(visibleJobs, key = { it.id }) { job ->
-                            AdminJobRow(
-                                job = job,
-                                loc = loc,
-                                onEdit = { onEditJob(job) },
-                                onDelete = { pendingDelete = job }   // #26: اول می‌پرسد، بعد پاک می‌کند
-                            )
-                        }
+                        StatCard(
+                            loc.n(applicants.size), loc["stats_people"], VioletDeep,
+                            Modifier.weight(1f),
+                            onClick = { tab = 1; statusFilter = "" }
+                        )
+                        StatCard(
+                            loc.n(statusCounts["new"] ?: 0), "🆕 " + loc["st_new"], AccentGoldDeep,
+                            Modifier.weight(1f),
+                            onClick = { tab = 1; statusFilter = "new" }
+                        )
                     }
                 }
-            } else if (tab == 2) {
-                // ============ تنظیمات کارگزار (برای متن تعهدنامه) ============
-                AdminSettingsTab(
-                    loc = loc,
-                    brokerCard = brokerCard,
-                    adminUser = adminUser,
-                    adminPass = adminPass,
-                    twoFAEnabled = twoFAEnabled,
-                    twoFAPending = twoFAPending,
-                    twoFASecret = twoFASecret,
-                    twoFARecovery = twoFARecovery,
-                    twoFAUri = twoFAUri,
-                    onSave = onSaveSettings,
-                    onBegin2FA = onBegin2FA,
-                    onConfirm2FA = onConfirm2FA,
-                    onDisable2FA = onDisable2FA
-                )
-            } else {
-                // ============ متقاضیان ============
-                Column(Modifier.fillMaxSize()) {
-                    OutlinedTextField(
-                        value = peopleQuery,
-                        onValueChange = { peopleQuery = it },
-                        placeholder = { Text(loc["search_applicants"], color = Ink3, fontSize = 13.sp) },
-                        leadingIcon = { Icon(Icons.Filled.Search, null, tint = Ink3) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .padding(top = 8.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = CardBg,
-                            focusedContainerColor = CardBg,
-                            focusedBorderColor = Brand,
-                            unfocusedBorderColor = Line
-                        )
+                item {
+                    AdmSearch(jobQuery, { jobQuery = it }, loc["search_jobs_hint"])
+                }
+                if (visibleJobs.isEmpty()) {
+                    item { EmptyState("📭", loc["no_listings"]) }
+                }
+                items(visibleJobs, key = { it.id }) { job ->
+                    AdminJobRow(
+                        job = job,
+                        loc = loc,
+                        onEdit = { onEditJob(job) },
+                        onDelete = { pendingDelete = job }   // #26: اول می‌پرسد، بعد پاک می‌کند
                     )
+                }
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    PrimaryButton(text = "＋ " + loc["add_listing"], onClick = onNewJob)
+                }
+            }
 
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+            2 -> AdminSettingsTab(
+                loc = loc,
+                brokerCard = brokerCard,
+                adsFee = adsFee,                        // #34
+                onSaveAdsFee = onSaveAdsFee,            // #34
+                twoFAEnabled = twoFAEnabled,
+                twoFAPending = twoFAPending,
+                twoFASecret = twoFASecret,
+                twoFARecovery = twoFARecovery,
+                twoFAUri = twoFAUri,
+                onSave = onSaveSettings,
+                onBegin2FA = onBegin2FA,
+                onConfirm2FA = onConfirm2FA,
+                onDisable2FA = onDisable2FA,
+                signedCount = applicants.count { it.undertaking?.signed == true },
+                totalCount = applicants.size,
+                modifier = Modifier.padding(padding),
+                tabs = { AdminTabs(loc, tab, applicants.size) { tab = it } }
+            )
+
+            else -> LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item { AdminTabs(loc, tab, applicants.size) { tab = it } }
+                // ---------- تفکیک متقاضیان با کلیک روی وضعیت‌ها (دمو) ----------
+                item {
+                    Text(
+                        "👆 " + loc["adm2_filter_hint"],
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ink3,
+                        lineHeight = 22.sp
+                    )
+                }
+                item {
+                    FlowRowCompat {
+                        StatusChip(
+                            "🧑‍🤝‍🧑 " + loc["all_applicants"] + " " + loc.n(applicants.size),
+                            statusFilter.isEmpty(), ChipTone.Plain
+                        ) { statusFilter = "" }
+                        StatusChip(
+                            "🆕 " + loc["st_new"] + " " + loc.n(statusCounts["new"] ?: 0),
+                            statusFilter == "new", ChipTone.Plain
+                        ) { statusFilter = if (statusFilter == "new") "" else "new" }
+                        StatusChip(
+                            "🔎 " + loc["st_reviewed"] + " " + loc.n(statusCounts["reviewed"] ?: 0),
+                            statusFilter == "reviewed", ChipTone.Amber
+                        ) { statusFilter = if (statusFilter == "reviewed") "" else "reviewed" }
+                        StatusChip(
+                            "🤝 " + loc["st_referred"] + " " + loc.n(statusCounts["referred"] ?: 0),
+                            statusFilter == "referred", ChipTone.Green
+                        ) { statusFilter = if (statusFilter == "referred") "" else "referred" }
+                    }
+                }
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    AdmSearch(peopleQuery, { peopleQuery = it }, loc["search_applicants"])
+                }
+                item {
+                    Text(
+                        "👆 " + loc["adm2_open_hint"],
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Ink3
+                    )
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f)) {
                             PickerField(
                                 label = loc["province"],
@@ -426,7 +432,9 @@ fun AdminContent(
                                 placeholder = loc["all"],
                                 options = Catalog.IR_PROVINCES.map { it.first to it.first },
                                 onSelect = { cityFilter = it },
-                                emptyOptionLabel = loc["all"]
+                                emptyOptionLabel = loc["all"],
+                                inlineLabel = true,
+                                containerColor = Color.White
                             )
                         }
                         Box(Modifier.weight(1f)) {
@@ -439,15 +447,38 @@ fun AdminContent(
                                 onSelect = { specFilter = it },
                                 searchable = true,
                                 searchPlaceholder = loc["search_profession"],
-                                emptyOptionLabel = loc["all"]
+                                emptyOptionLabel = loc["all"],
+                                inlineLabel = true,
+                                containerColor = Color.White
                             )
                         }
                     }
-
-                    Column(Modifier.padding(horizontal = 16.dp)) {
+                }
+                item {
+                    // v45: زبان‌هایی که بلد است
+                    PickerField(
+                        label = "🗣 " + loc["spoken_langs"],
+                        value = langFilter.takeIf { it.isNotEmpty() }
+                            ?.let { WorldLanguages.label(it, loc.code) } ?: "",
+                        placeholder = loc["all"],
+                        options = langOptions,
+                        onSelect = { langFilter = it },
+                        searchable = true,
+                        searchPlaceholder = loc["search_lang"],
+                        emptyOptionLabel = loc["all"],
+                        matcher = { v, q -> langSearch[v]?.contains(q, ignoreCase = true) == true },
+                        inlineLabel = true,
+                        containerColor = Color.White
+                    )
+                }
+                item {
+                    Column {
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            loc["filter_min_level"] + ": " + if (minLevel == 0) loc["all"] else loc.n(minLevel) + "%",
-                            style = MaterialTheme.typography.labelSmall,
+                            loc["filter_min_level"] + ": " +
+                                if (minLevel == 0) loc["all"] else loc.n(minLevel) + "%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Ink2
                         )
                         Slider(
@@ -456,82 +487,22 @@ fun AdminContent(
                             valueRange = 0f..100f,
                             steps = 9,
                             colors = SliderDefaults.colors(
-                                thumbColor = Purple,
-                                activeTrackColor = Purple,
+                                thumbColor = Brand,
+                                activeTrackColor = Brand,
                                 inactiveTrackColor = Line
                             )
                         )
                     }
-
-                    // ---------- تفکیک متقاضیان با کلیک روی وضعیت‌ها ----------
-                    Text(
-                        loc["status_filter_hint"],
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Ink3,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                }
+                if (visiblePeople.isEmpty()) {
+                    item { EmptyState("👥", loc["no_applicants"]) }
+                }
+                items(visiblePeople, key = { it.id }) { p ->
+                    ApplicantRow(
+                        applicant = p,
+                        loc = loc,
+                        onClick = { onOpenApplicant(p) }
                     )
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(Modifier.weight(1f)) {
-                            StatusChip(
-                                "🧑‍🤝‍🧑 " + loc["all_applicants"] + " " + loc.n(applicants.size),
-                                statusFilter.isEmpty()
-                            ) { statusFilter = "" }
-                        }
-                        Box(Modifier.weight(1f)) {
-                            StatusChip(
-                                "🆕 " + loc["st_new"] + " " + loc.n(applicants.count { it.status == "new" }),
-                                statusFilter == "new"
-                            ) { statusFilter = if (statusFilter == "new") "" else "new" }
-                        }
-                    }
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(Modifier.weight(1f)) {
-                            StatusChip(
-                                "🔎 " + loc["st_reviewed"] + " " + loc.n(applicants.count { it.status == "reviewed" }),
-                                statusFilter == "reviewed"
-                            ) { statusFilter = if (statusFilter == "reviewed") "" else "reviewed" }
-                        }
-                        Box(Modifier.weight(1f)) {
-                            StatusChip(
-                                "🤝 " + loc["st_referred"] + " " + loc.n(applicants.count { it.status == "referred" }),
-                                statusFilter == "referred"
-                            ) { statusFilter = if (statusFilter == "referred") "" else "referred" }
-                        }
-                    }
-                    Text(
-                        loc["open_applicant_hint"],
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Ink3,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    LazyColumn(
-                        Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (visiblePeople.isEmpty()) {
-                            item { EmptyState("👥", loc["no_applicants"]) }
-                        }
-                        items(visiblePeople, key = { it.id }) { p ->
-                            ApplicantRow(
-                                applicant = p,
-                                loc = loc,
-                                onClick = { onOpenApplicant(p) },
-                                onSetStatus = { st -> onSetStatus(p.id, st) }
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -614,6 +585,155 @@ fun AdminContent(
     }
 }
 
+// ==========================================================
+// v46 — اجزای پنل مدیریت دقیقاً مطابق karbama-demo.html
+// ==========================================================
+
+/** گرادیان appbar.teal دمو: linear-gradient(135deg,#088080,#0A7F91) */
+private val AdminBarBrush = Brush.linearGradient(listOf(Color(0xFF088080), Color(0xFF0A7F91), Color(0xFF0A7F91)))
+private val AdmCardShape = RoundedCornerShape(20.dp)
+
+/** نوار بالای پنل: آیکون + عنوان، دکمه‌ی طلایی «+» و دکمه‌ی «خروج از حساب» */
+@Composable
+private fun AdminHeader(
+    icon: String,
+    title: String,
+    addLabel: String,
+    onAdd: () -> Unit,
+    exitLabel: String,
+    onExit: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(AdminBarBrush)
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .defaultMinSize(minHeight = 62.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(icon, fontSize = 20.sp)
+            Text(
+                title,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                lineHeight = 22.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            AdminAddButton(text = addLabel, onClick = onAdd)      // #27
+            AdminExitButton(text = exitLabel, onClick = onExit)   // #25
+        }
+    }
+}
+
+/** تب‌های قرصی دمو (.tabs): زمینه‌ی #ECF3F6، تب فعال سفید با سایه */
+@Composable
+private fun AdminTabs(loc: Loc, tab: Int, peopleCount: Int, onTab: (Int) -> Unit) {
+    val labels = listOf(
+        loc["tab_listings"],
+        loc["tab_applicants"] + " (" + loc.n(peopleCount) + ")",
+        loc["und_tabSettings"]
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFECF3F6))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        labels.forEachIndexed { i, label ->
+            val on = i == tab
+            Box(
+                Modifier
+                    .weight(1f)
+                    .then(if (on) Modifier.shadow(3.dp, RoundedCornerShape(12.dp)) else Modifier)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (on) Color.White else Color.Transparent)
+                    .clickable { onTab(i) }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (on) BrandDark else Ink2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/** کارت سفید مات دمو (.card / .person): گوشه‌ی گرد، قاب #E3ECF0، سایه‌ی نرم */
+@Composable
+private fun AdmCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    color: Color = Color.White,
+    padding: Dp = 12.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clip(AdmCardShape).clickable(onClick = onClick) else Modifier),
+        shape = AdmCardShape,
+        color = color,
+        border = BorderStroke(1.dp, Line),
+        shadowElevation = 3.dp
+    ) {
+        Column(Modifier.padding(padding), content = content)
+    }
+}
+
+/** کادر جست‌وجوی دمو */
+@Composable
+private fun AdmSearch(value: String, onChange: (String) -> Unit, placeholder: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        placeholder = { Text(placeholder, color = Ink3, fontSize = 14.sp) },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(3.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        textStyle = MaterialTheme.typography.bodyMedium,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = Color.White,
+            focusedContainerColor = Color.White,
+            focusedBorderColor = Brand,
+            unfocusedBorderColor = Line
+        )
+    )
+}
+
+/** برچسب کوچک .mini دمو (💵 حقوق، 🕒 نوع قرارداد، 🗓 زمان) */
+@Composable
+private fun Mini(text: String) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF6FAFB))
+            .border(1.dp, Color(0xFFEDF3F6), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(text, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Ink2, maxLines = 1)
+    }
+}
+
 @Composable
 private fun StatCard(
     value: String,
@@ -622,20 +742,38 @@ private fun StatCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    Surface(
-        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
-        shape = MaterialTheme.shapes.large,
-        color = GlassFill,
-        border = BorderStroke(1.dp, GlassStroke),
-        shadowElevation = 6.dp
-    ) {
-        Column(
-            Modifier.padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+    AdmCard(modifier = modifier, onClick = onClick) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = accent)
-            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            Spacer(Modifier.height(2.dp))
+            Text(label, fontSize = 12.sp, color = Ink3, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+/** دکمه‌ی کوچک دمو: .btn-ghost.btn-sm / .btn-danger.btn-sm */
+@Composable
+private fun AdmSmallButton(text: String, danger: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(
+                if (danger) Brush.linearGradient(listOf(Color(0xFFFEF0F0), Color(0xFFFFEDE7)))
+                else Brush.linearGradient(listOf(Color.White, Color.White))
+            )
+            .border(1.5.dp, if (danger) Color(0xFFFFEDE7) else Line, shape)
+            .clickable(onClick = onClick)
+            .padding(vertical = 11.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (danger) DangerText else Ink,
+            maxLines = 1
+        )
     }
 }
 
@@ -646,92 +784,77 @@ private fun AdminJobRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = GlassFill,
-        border = BorderStroke(1.dp, GlassStroke),
-        shadowElevation = 6.dp
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandBrush),
-                    contentAlignment = Alignment.Center
-                ) { Text(loc.jobIcon(job.titleKey), fontSize = 18.sp) }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        job.titleKey.takeIf { it.isNotEmpty() }?.let { loc.jobTitle(it) } ?: job.titleCustom,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        job.company,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TagChip(loc.money(job.salary), TagTone.Green)
-                        TagChip(loc.contract(job.contract), TagTone.Purple)
-                        TagChip(loc.timeAgo(job.publishedAt), TagTone.Plain)
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onEdit,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.small,
-                    border = androidx.compose.foundation.BorderStroke(1.3.dp, Line),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink)
-                ) {
-                    Icon(Icons.Filled.Edit, null, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(loc["edit"], style = MaterialTheme.typography.labelMedium)
-                }
-                DangerButton(
-                    text = loc["delete"],
-                    icon = Icons.Filled.Delete,
-                    modifier = Modifier.weight(1f),
-                    onClick = onDelete
+    AdmCard(onClick = onEdit) {
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandBrush),
+                contentAlignment = Alignment.Center
+            ) { Text(loc.jobIcon(job.titleKey), fontSize = 17.sp) }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    job.titleKey.takeIf { it.isNotEmpty() }?.let { loc.jobTitle(it) } ?: job.titleCustom,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    listOf(job.company, job.city + if (job.district.isBlank()) "" else " / " + job.district)
+                        .filter { it.isNotBlank() }.joinToString(" · "),
+                    fontSize = 13.sp,
+                    color = Ink3,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                FlowRowCompat {
+                    Mini("💵 " + loc.money(job.salary))
+                    Mini("🕒 " + loc.contract(job.contract))
+                    Mini("🗓 " + loc.timeAgo(job.publishedAt))
+                }
             }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AdmSmallButton("✏️ " + loc["adm2_edit_job"], false, Modifier.weight(1f), onEdit)
+            AdmSmallButton("🗑 " + loc["delete"], true, Modifier.weight(1f), onDelete)
         }
     }
 }
 
+/** ردیف متقاضی (.person دمو): آواتار، نام، محل/سطح ترکی، مبلغ، تخصص‌ها؛ سمت دیگر وضعیت/پرداخت/زمان */
 @Composable
 private fun ApplicantRow(
     applicant: Applicant,
     loc: Loc,
-    onClick: () -> Unit,
-    onSetStatus: (String) -> Unit
+    onClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
-        color = GlassFill,
-        border = BorderStroke(1.dp, GlassStroke),
-        shadowElevation = 6.dp
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(Purple, Brand))),
-                    contentAlignment = Alignment.Center
-                ) {
+    AdmCard(onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val photo = photoModel(applicant.bodyPhotoUrl)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .shadow(3.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(Violet, Brand)))
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (photo != null) {
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Text(
                         initials(applicant.fullName),
                         color = Color.White,
@@ -739,68 +862,77 @@ private fun ApplicantRow(
                         fontSize = 15.sp
                     )
                 }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(applicant.fullName, style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(applicant.fullName, fontSize = 14.sp, fontWeight = FontWeight.Black, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "📍 " + listOf(applicant.city, applicant.district)
+                        .filter { it.isNotEmpty() }.joinToString(" / ") +
+                        " · 🗣 " + loc.n(applicant.trLevel) + "%",
+                    fontSize = 13.sp,
+                    color = Ink3
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "💰 " + loc.money(applicant.undertaking?.fee ?: 0L),
+                    fontSize = 13.sp,
+                    color = Ink3
+                )
+                if (applicant.jobKeys.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        "📍 " + listOf(applicant.city, applicant.district)
-                            .filter { it.isNotEmpty() }.joinToString(" / ") +
-                            "  🗣 " + loc.n(applicant.trLevel) + "%",
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "💰 " + loc.money(applicant.undertaking?.fee ?: 0L),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = BrandDark
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        applicant.jobKeys.take(3).joinToString(" • ") {
-                            loc.jobIcon(it) + " " + loc.jobTitle(it)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Ink2,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    FlowRowCompat {
+                        applicant.jobKeys.take(3).forEach {
+                            Mini(loc.jobIcon(it) + " " + loc.jobTitle(it))
+                        }
+                    }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    StatusBadge(applicant.status, loc)
+                if (applicant.spokenLangs.isNotEmpty()) {   // v45
                     Spacer(Modifier.height(4.dp))
-                    Text(loc.timeAgo(applicant.createdAt), style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        "🌐 " + WorldLanguages.labels(applicant.spokenLangs.take(4), loc.code),
+                        fontSize = 12.sp,
+                        color = Ink3,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip(loc["st_new"], applicant.status == "new") { onSetStatus("new") }
-                StatusChip(loc["st_reviewed"], applicant.status == "reviewed") { onSetStatus("reviewed") }
-                StatusChip(loc["st_referred"], applicant.status == "referred") { onSetStatus("referred") }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                StatusBadge(applicant.status, loc)
+                Spacer(Modifier.height(8.dp))
+                PayBadge(applicant.payStatus, loc)   // #34
+                Spacer(Modifier.height(8.dp))
+                Text(loc.timeAgo(applicant.createdAt), fontSize = 12.sp, color = Ink3)
             }
         }
     }
 }
 
+private enum class ChipTone { Plain, Amber, Green }
+
+/** چیپ وضعیت دمو (.chip / .chip.on) با رنگ‌های «بررسی‌شده» و «معرفی‌شده» */
 @Composable
-private fun StatusChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = if (selected) BrandLight else FieldBg,
-        border = androidx.compose.foundation.BorderStroke(
-            1.2.dp,
-            if (selected) Brand else Line
-        ),
-        modifier = Modifier.clickable(onClick = onClick)
+private fun StatusChip(text: String, selected: Boolean, tone: ChipTone, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val (bg, line, fg) = when {
+        selected -> Triple(Brush.linearGradient(listOf(Color(0xFFE2FBF3), Color(0xFFD6F2EC))), Brand.copy(alpha = 0.42f), BrandDark)
+        tone == ChipTone.Amber -> Triple(Brush.linearGradient(listOf(AccentLight, AccentLight)), SunLine, WarnText)
+        tone == ChipTone.Green -> Triple(Brush.linearGradient(listOf(OkLight, OkLight)), Color(0xFFA7F3D0), OkDeep)
+        else -> Triple(Brush.linearGradient(listOf(Color.White, Color(0xFFF6FAFB))), Line, Ink2)
+    }
+    Box(
+        Modifier
+            .then(if (selected) Modifier.shadow(3.dp, shape) else Modifier)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, line, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) BrandDark else Ink2,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-        )
+        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1)
     }
 }
 
@@ -817,6 +949,8 @@ fun ApplicantDetailScreen(
     brokerHolder: String,
     onSetStatus: (String) -> Unit,
     onSetFee: (Long) -> Unit,
+    adsFee: Long = 6000L,                              // #34
+    onSetPayment: (String) -> Unit = {},               // #34: paid | ""
     onBack: () -> Unit,
     likedItems: List<com.karbama.app.data.repo.ActivityItem> = emptyList(),      // #29
     appliedItems: List<com.karbama.app.data.repo.ActivityItem> = emptyList(),    // #29
@@ -930,6 +1064,11 @@ fun ApplicantDetailScreen(
                     applicant.jobKeys.joinToString("، ") { loc.jobTitle(it) }.ifEmpty { "—" }
                 )
                 HorizontalDivider(color = Line)
+                InfoRow(
+                    loc["spoken_langs"],
+                    WorldLanguages.labels(applicant.spokenLangs, loc.code).ifEmpty { "—" }
+                )
+                HorizontalDivider(color = Line)
                 InfoRow(loc["published"], loc.timeAgo(applicant.createdAt))
             }
 
@@ -975,6 +1114,71 @@ fun ApplicantDetailScreen(
                 }
                 Spacer(Modifier.height(12.dp))
                 DocRules(loc)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ---------- #34: وضعیت پرداخت هزینه‌ی نمایش آگهی‌ها ----------
+            SectionCard {
+                SectionTitle("💳 " + loc["pay_sec"])
+                Spacer(Modifier.height(8.dp))
+                InfoRow(loc["pay_fee"], loc.money(adsFee))
+                HorizontalDivider(color = Line)
+                InfoRow(loc["pay_ref"], applicant.payTrackCode)
+                if (applicant.payMethod.isNotBlank()) {
+                    HorizontalDivider(color = Line)
+                    InfoRow(loc["pay_method"], when (applicant.payMethod) {
+                        "manual" -> loc["pay_manual"]
+                        "zarinpal" -> loc["pay_iran"]
+                        "iyzico" -> loc["pay_turkey"]
+                        else -> applicant.payMethod
+                    })
+                }
+                if (applicant.payReference.isNotBlank()) {
+                    HorizontalDivider(color = Line)
+                    InfoRow(loc["pay_tx_ref"], applicant.payReference)
+                }
+                HorizontalDivider(color = Line)
+                InfoRow(loc["pay_sec"],
+                    when (applicant.payStatus) {
+                        "pending" -> "⏳ " + loc["pay_st_pending"]
+                        "paid" -> "✅ " + loc["pay_st_paid"]
+                        else -> "⛔ " + loc["pay_st_unpaid"]
+                    }
+                )
+                if (applicant.payAt > 0L) {
+                    HorizontalDivider(color = Line)
+                    InfoRow(loc["date"], loc.timeAgo(applicant.payAt))
+                }
+                if (applicant.payReceiptUrl.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    DocThumb(
+                        model = photoModel(applicant.payReceiptUrl),
+                        label = loc["pay_receipt_image"],
+                        emptyText = loc["no_doc"],
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (applicant.payStatus == "pending" && applicant.payMethod == "manual") {
+                    Spacer(Modifier.height(8.dp))
+                    Text("⚠️ " + loc["pay_manual_required"], style = MaterialTheme.typography.bodySmall, color = WarnText)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PayBadge(applicant.payStatus, loc)
+                    Spacer(Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                if (applicant.payStatus == "paid") {
+                    GhostButton(
+                        text = "↩︎ " + loc["pay_cancel"],
+                        onClick = { onSetPayment("") }
+                    )
+                } else {
+                    PrimaryButton(
+                        text = "✅ " + loc["pay_confirm"],
+                        onClick = { onSetPayment("paid") }
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -1143,77 +1347,56 @@ private fun admFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = Brand
 )
 
-/** #27: دکمه‌ی «افزودن آگهی» در نوار بالا — ثابت، بدون هم‌پوشانی با «حذف» */
+/** #27/v46: دکمه‌ی «افزودن آگهی» دمو (.admin-add) — مربع طلایی با «+» (در گوشی، متن پنهان است) */
 @Composable
 private fun AdminAddButton(text: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .padding(end = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier
+            .size(40.dp)
+            .shadow(6.dp, shape, ambientColor = Accent, spotColor = Accent)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFFFFB020), Color(0xFFF59E0B))))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.4.dp, Color.White.copy(alpha = 0.65f)),
-        shadowElevation = 6.dp
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            Modifier
-                .background(Brush.linearGradient(listOf(SunLine, Accent)))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Filled.Add,
-                contentDescription = null,
-                tint = WarnDeep,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = text,
-                color = WarnDeep,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = text,
+            tint = WarnDeep,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
-/** #25: دکمه‌ی خروج شیک پنل مدیریت — شیشه‌ای، گرد، آیکون + متن */
+/** #25/v46: دکمه‌ی خروج دمو (.admin-exit) — قاب سفید نیمه‌شفاف، زمینه‌ی تیره‌ی مات، آیکون + متن */
 @Composable
 private fun AdminExitButton(text: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .padding(end = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        // #33: زمینه‌ی تیره‌تر تا متن سفید «خروج از حساب» کنتراست کافی داشته باشد
-        color = Color(0xFF06323A).copy(alpha = 0.46f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.55f)),
-        shadowElevation = 6.dp
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        Modifier
+            .height(40.dp)
+            .clip(shape)
+            .background(Color(0xFF08606E))      // معادل مات rgba(6,50,58,.4) روی نوار → بدون دو رنگی
+            .border(1.4.dp, Color.White.copy(alpha = 0.55f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Logout,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(17.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = text,
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
-        }
+        Icon(
+            Icons.AutoMirrored.Filled.Logout,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
     }
 }
 
@@ -1234,7 +1417,8 @@ private fun IconTextButton(
 private fun AdmLabel(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.labelMedium,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.ExtraBold,
         color = Ink2,
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -1258,13 +1442,14 @@ private fun AdmField(
         onValueChange = onValueChange,
         singleLine = true,
         isError = isError,
-        textStyle = MaterialTheme.typography.bodyLarge,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
         placeholder = placeholder?.let {
             { Text(it, color = Ink3, style = MaterialTheme.typography.bodyLarge) }
         },
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp),
+            .heightIn(min = 56.dp)
+            .shadow(3.dp, AdmFieldShape),
         shape = AdmFieldShape,
         visualTransformation = if (revealable && !revealed) PasswordVisualTransformation()
         else VisualTransformation.None,
@@ -1285,83 +1470,124 @@ private fun AdmField(
     )
 }
 
+/** عنوان بخش دمو (.sec-title) + توضیح کم‌رنگ زیر آن */
+@Composable
+private fun AdmSection(title: String, hint: String?) {
+    SectionTitle(title)
+    if (hint != null) {
+        Spacer(Modifier.height(4.dp))
+        Text(hint, fontSize = 13.sp, color = Ink3, lineHeight = 24.sp)
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/**
+ * v46: تب «تنظیمات» عین دمو:
+ *  ۱) یک کارت: تنظیمات کارگزار (کارت بانکی) ── هزینه نمایش آگهی‌ها ── 💾 ذخیره
+ *  ۲) کارت ورود دومرحله‌ای
+ *  ۳) کارت خلاصه‌ی خاکستری (کارت کارگزار، وضعیت ۲FA، تعهدنامه‌های امضاشده)
+ * بخش «یوزرنیم/پسورد مدیر» دمو عمداً حذف است: ورود مدیر فقط با Firebase است
+ * و هیچ اطلاعات ورود مدیر در برنامه نمایش داده یا ذخیره نمی‌شود.
+ */
 @Composable
 private fun AdminSettingsTab(
     loc: Loc,
     brokerCard: String,
-    adminUser: String,
-    adminPass: String,
+    adsFee: Long = 6000L,                       // #34
+    onSaveAdsFee: (Long) -> Unit = {},          // #34
     twoFAEnabled: Boolean,
     twoFAPending: Boolean,
     twoFASecret: String,
     twoFARecovery: String,
     twoFAUri: String,
-    onSave: (String, String, String) -> Unit,
+    onSave: (String) -> Unit,
     onBegin2FA: () -> Unit,
     onConfirm2FA: (String) -> Boolean,
-    onDisable2FA: () -> Unit
+    onDisable2FA: () -> Unit,
+    signedCount: Int = 0,
+    totalCount: Int = 0,
+    modifier: Modifier = Modifier,
+    tabs: @Composable () -> Unit = {}
 ) {
-    var cardText by remember { mutableStateOf(brokerCard) }
-    var userText by remember { mutableStateOf(adminUser) }
-    var passText by remember { mutableStateOf(adminPass) }
-    var passShown by remember { mutableStateOf(false) }
+    var cardText by remember { mutableStateOf(FormatUtils.formatCard(brokerCard)) }
+    var adsFeeText by remember(adsFee) { mutableStateOf(adsFee.toString()) }   // #34
     var secretShown by remember { mutableStateOf(false) }
     var recoveryShown by remember { mutableStateOf(false) }
     var codeText by remember { mutableStateOf("") }
     var codeBad by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
-    val valid = userText.trim().isNotEmpty() && passText.isNotEmpty()
-
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp)
     ) {
-        // ---------- یوزرنیم و پسورد مدیر ----------
-        SectionCard {
-            SectionTitle(loc["admin_credentials"])
-            Spacer(Modifier.height(8.dp))
-            Text(
-                loc["admin_hint"],
-                style = MaterialTheme.typography.bodySmall,
-                lineHeight = 20.sp
+        tabs()
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- ۱) کارگزار + هزینه‌ی نمایش آگهی‌ها (یک کارت، مثل دمو) ----------
+        AdmCard(padding = 16.dp) {
+            AdmSection(loc["und_adminSettings"], loc["und_adminHint"])
+            AdmLabel(loc["und_adminCard"])
+            AdmField(
+                value = cardText,
+                onValueChange = { input ->
+                    cardText = FormatUtils.formatCard(input)
+                    saved = false
+                },
+                placeholder = "1234 1234 1234 1234",
+                keyboardType = KeyboardType.Number
             )
+            Spacer(Modifier.height(8.dp))
+            Text(loc["adm2_card_hint"], fontSize = 13.sp, color = Ink3, lineHeight = 20.sp)
+            if (cardText.isNotBlank() && !FormatUtils.cardIsValid(cardText)) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "⚠️ " + loc["und_cardWarn"],
+                    fontSize = 13.sp,
+                    color = Danger,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = Line)
             Spacer(Modifier.height(16.dp))
 
-            AdmLabel(loc["admin_user"])
+            AdmSection(loc["pay_ads_fee"], loc["pay_ads_fee_hint"])
+            AdmLabel(loc["pay_amount"])
             AdmField(
-                value = userText,
-                onValueChange = { userText = it.replace(" ", ""); saved = false },
-                placeholder = "rezaei"
-            )
-
-            Spacer(Modifier.height(12.dp))
-            AdmLabel(loc["admin_pass"])
-            AdmField(
-                value = passText,
-                onValueChange = { passText = it; saved = false },
-                placeholder = "••••••",
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-                revealed = passShown,
-                revealable = true,
-                onToggleReveal = { passShown = !passShown },
-                revealLabel = loc[if (passShown) "pass_hide" else "pass_show"]
+                value = adsFeeText,
+                onValueChange = { v ->
+                    adsFeeText = FormatUtils.digitsOnly(v, 9)
+                    saved = false
+                },
+                placeholder = "500",
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                loc[if (passShown) "pass_note_shown" else "admin_pass_note"],
-                style = MaterialTheme.typography.bodySmall,
-                color = if (passShown) WarnStrong else Ink3
+                loc.money(adsFeeText.toLongOrNull() ?: adsFee),
+                fontSize = 13.sp,
+                color = Ink3
             )
-            if (!valid) {
+            Spacer(Modifier.height(12.dp))
+            PrimaryButton(
+                text = "💾 " + loc["save"],
+                onClick = {
+                    onSave(FormatUtils.digitsOnly(cardText, 16))
+                    onSaveAdsFee(adsFeeText.toLongOrNull() ?: adsFee)
+                    saved = true
+                }
+            )
+            if (saved) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    loc["admin_empty"],
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Danger,
+                    "✅ " + loc["adm2_saved"],
+                    fontSize = 13.sp,
+                    color = Ok,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1369,22 +1595,15 @@ private fun AdminSettingsTab(
 
         Spacer(Modifier.height(12.dp))
 
-        // ---------- ورود دومرحله‌ای (2FA) ----------
-        SectionCard {
-            SectionTitle(loc["twofa_title"])
-            Spacer(Modifier.height(8.dp))
-            Text(
-                loc["twofa_hint"],
-                style = MaterialTheme.typography.bodySmall,
-                lineHeight = 20.sp
-            )
-            Spacer(Modifier.height(8.dp))
+        // ---------- ۲) ورود دومرحله‌ای (2FA) ----------
+        AdmCard(padding = 16.dp) {
+            AdmSection(loc["twofa_title"], loc["twofa_hint"])
             Text(
                 text = (if (twoFAEnabled) "🟢 " else "⚪ ") +
                     loc[if (twoFAEnabled) "twofa_on" else "twofa_off"],
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (twoFAEnabled) Ok else Ink3
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (twoFAEnabled) OkDeep else Ink3
             )
 
             if (!twoFAEnabled && !twoFAPending) {
@@ -1396,8 +1615,8 @@ private fun AdminSettingsTab(
             }
 
             if (twoFAPending || twoFAEnabled) {
-                Spacer(Modifier.height(16.dp))
-                Text(loc["twofa_scan"], style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(12.dp))
+                Text(loc["twofa_scan"], fontSize = 13.sp, color = Ink3, lineHeight = 22.sp)
                 Spacer(Modifier.height(8.dp))
                 Surface(
                     shape = MaterialTheme.shapes.medium,
@@ -1441,8 +1660,10 @@ private fun AdminSettingsTab(
 
                 if (twoFAEnabled) {
                     Spacer(Modifier.height(12.dp))
-                    Text(loc["twofa_recovery"], style = MaterialTheme.typography.labelSmall, color = Ink2)
-                    Spacer(Modifier.height(4.dp))
+                    HorizontalDivider(color = Line)
+                    Spacer(Modifier.height(12.dp))
+                    SectionTitle(loc["twofa_recovery"])
+                    Spacer(Modifier.height(8.dp))
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = AccentLight,
@@ -1467,17 +1688,19 @@ private fun AdminSettingsTab(
                     )
                     Text(
                         loc["twofa_recovery_note"],
-                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 13.sp,
                         color = Ink3,
-                        lineHeight = 19.sp
+                        lineHeight = 22.sp
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     GhostButton(
                         text = "🚫 " + loc["twofa_disable"],
                         onClick = onDisable2FA
                     )
                 } else {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = Line)
+                    Spacer(Modifier.height(12.dp))
                     AdmLabel(loc["twofa_code"])
                     AdmField(
                         value = codeText,
@@ -1491,7 +1714,7 @@ private fun AdminSettingsTab(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "⚠️ " + loc["twofa_wrong"],
-                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 13.sp,
                             color = Danger,
                             fontWeight = FontWeight.Bold
                         )
@@ -1516,78 +1739,24 @@ private fun AdminSettingsTab(
 
         Spacer(Modifier.height(12.dp))
 
-        // ---------- کارت بانکی کارگزار (متن تعهدنامه) ----------
-        SectionCard {
-            SectionTitle(loc["und_adminSettings"])
-            Spacer(Modifier.height(8.dp))
-            Text(
-                loc["und_adminHint"],
-                style = MaterialTheme.typography.bodySmall,
-                lineHeight = 20.sp
-            )
-            Spacer(Modifier.height(12.dp))
-            AdmLabel(loc["und_adminCard"])
-            AdmField(
-                value = cardText,
-                onValueChange = { input ->
-                    cardText = FormatUtils.formatCard(input)
-                    saved = false
-                },
-                placeholder = "0000 0000 0000 0000",
-                keyboardType = KeyboardType.Number
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                loc["und_cardWarn"],
-                style = MaterialTheme.typography.bodySmall,
-                color = if (FormatUtils.cardIsValid(cardText)) Ink3 else Danger
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-        PrimaryButton(
-            text = loc["save"] + " ✓",
-            onClick = {
-                if (valid) {
-                    onSave(
-                        FormatUtils.digitsOnly(cardText, 16),
-                        userText.trim(),
-                        passText
-                    )
-                    saved = true
-                }
-            }
-        )
-        if (saved) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "✓ " + loc["admin_saved"],
-                style = MaterialTheme.typography.bodySmall,
-                color = Ok,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        SectionCard {
-            SectionTitle(loc["und_short"])
-            Spacer(Modifier.height(8.dp))
-            InfoRow(loc["admin_user"], userText.trim().ifBlank { "—" })
-            HorizontalDivider(color = Line)
-            InfoRow(loc["admin_pass"], if (passText.isEmpty()) "—" else "••••••")
-            HorizontalDivider(color = Line)
-            InfoRow(
-                loc["twofa_title"],
-                loc[if (twoFAEnabled) "twofa_on" else "twofa_off"]
-            )
-            HorizontalDivider(color = Line)
-            InfoRow(
+        // ---------- ۳) کارت خلاصه‌ی خاکستری دمو ----------
+        AdmCard(padding = 16.dp, color = Color(0xFFF6FAFB)) {
+            SummaryLine(
                 loc["und_brokerCard"],
-                if (cardText.isBlank()) loc["und_brokerCardEmpty"] else loc.digits(cardText)
+                if (cardText.isBlank()) "—" else loc.digits(cardText)
             )
+            SummaryLine(loc["twofa_title"], loc[if (twoFAEnabled) "twofa_on" else "twofa_off"])
+            SummaryLine(loc["und_signed"], loc.n(signedCount) + " / " + loc.n(totalCount))
         }
-        Spacer(Modifier.height(24.dp))
+    }
+}
+
+
+@Composable
+private fun SummaryLine(k: String, v: String) {
+    Row(Modifier.padding(vertical = 3.dp)) {
+        Text("$k: ", fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
+        Text(v, fontSize = 13.sp, color = Ink, fontWeight = FontWeight.Black, lineHeight = 26.sp)
     }
 }
 

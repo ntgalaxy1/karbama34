@@ -53,6 +53,8 @@ import androidx.core.view.WindowCompat
 import com.karbama.app.data.model.Status
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.R
+import com.karbama.app.util.PhoneCountry
+import com.karbama.app.util.WorldLanguages
 import com.karbama.app.ui.theme.*
 
 
@@ -393,9 +395,9 @@ fun Pill(text: String, bg: Color, fg: Color, modifier: Modifier = Modifier) {
 @Composable
 fun StatusBadge(status: String, loc: Loc) {
     val (bg, fg) = when (status) {
-        Status.REVIEWED -> AccentLight to WarnText
-        Status.REFERRED -> OkLight to OkDeep
-        else -> BlueLight to Blue
+        Status.REVIEWED -> SunLine to WarnStrong       // v46: رنگ‌های دمو
+        Status.REFERRED -> BrandTint2 to BrandDark
+        else -> VioletLight to VioletDeep
     }
     Pill(text = loc.status(status), bg = bg, fg = fg)
 }
@@ -560,24 +562,37 @@ fun PickerField(
     error: String? = null,
     searchable: Boolean = false,
     searchPlaceholder: String = "",
-    emptyOptionLabel: String? = null
+    emptyOptionLabel: String? = null,
+    /** تطبیق سفارشی جست‌وجو (value, query) — مثلاً نام انگلیسی کشور یا +کد */
+    matcher: ((String, String) -> Boolean)? = null,
+    /** v46: حالت دمو «استان: همه» — برچسب داخل کادر، بدون عنوان بالای آن */
+    inlineLabel: Boolean = false,
+    containerColor: Color = FieldBg
 ) {
     var open by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = if (required) "$label *" else label,
-            style = MaterialTheme.typography.labelMedium,
-            color = Ink2,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        if (!inlineLabel) {
+            Text(
+                text = if (required) "$label *" else label,
+                style = MaterialTheme.typography.labelMedium,
+                color = Ink2,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
+                .heightIn(min = if (inlineLabel) 50.dp else 56.dp)
+                .then(
+                    if (inlineLabel) Modifier
+                        .shadow(3.dp, MaterialTheme.shapes.medium)
+                        .border(1.dp, Line, MaterialTheme.shapes.medium)
+                    else Modifier
+                )
                 .clip(MaterialTheme.shapes.medium)
-                .background(if (enabled) FieldBg else FieldBg.copy(alpha = 0.5f))
+                .background(if (enabled) containerColor else containerColor.copy(alpha = 0.5f))
                 .clickable(enabled = enabled) {
                     query = ""
                     open = true
@@ -586,9 +601,11 @@ fun PickerField(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = value.ifEmpty { placeholder },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (value.isEmpty()) Ink3 else Ink,
+                text = if (inlineLabel) "$label: " + value.ifEmpty { placeholder }
+                else value.ifEmpty { placeholder },
+                style = if (inlineLabel) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold)
+                else MaterialTheme.typography.bodyLarge,
+                color = if (value.isEmpty() && !inlineLabel) Ink3 else Ink,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -608,7 +625,10 @@ fun PickerField(
 
     if (open) {
         val filtered = if (query.isBlank()) options
-        else options.filter { it.second.contains(query, ignoreCase = true) }
+        else options.filter {
+            it.second.contains(query.trim(), ignoreCase = true) ||
+                (matcher?.invoke(it.first, query.trim()) == true)
+        }
         Dialog(onDismissRequest = { open = false }) {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
@@ -693,6 +713,155 @@ private fun PickerRow(label: String, selected: Boolean, onClick: () -> Unit) {
         if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = BrandDark)
     }
 }
+
+/**
+ * فیلد چندانتخابی با پنجره‌ی جست‌وجو (v45 — «زبان‌هایی که بلدم»).
+ * options: value to label ؛ searchText: متن اضافی قابل‌جست‌وجو برای هر value.
+ */
+@Composable
+fun MultiPickerField(
+    label: String,
+    selected: List<String>,
+    options: List<Pair<String, String>>,
+    onChange: (List<String>) -> Unit,
+    placeholder: String,
+    searchPlaceholder: String,
+    doneLabel: String,
+    clearLabel: String,
+    modifier: Modifier = Modifier,
+    searchText: ((String) -> String)? = null,
+    required: Boolean = false
+) {
+    var open by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val labelOf = remember(options) { options.toMap() }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = if (required) "$label *" else label,
+            style = MaterialTheme.typography.labelMedium,
+            color = Ink2,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(FieldBg)
+                .clickable { query = ""; open = true }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (selected.isEmpty()) placeholder
+                else selected.joinToString("، ") { labelOf[it] ?: it },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected.isEmpty()) Ink3 else Ink,
+                modifier = Modifier.weight(1f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (selected.isNotEmpty()) {
+                Box(
+                    Modifier
+                        .padding(horizontal = 6.dp)
+                        .clip(CircleShape)
+                        .background(BrandLight)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        selected.size.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BrandDark
+                    )
+                }
+            }
+            Icon(Icons.Filled.ExpandMore, contentDescription = null, tint = Ink3)
+        }
+    }
+
+    if (open) {
+        val picked = remember { mutableStateListOf<String>().apply { addAll(selected) } }
+        // انتخاب‌شده‌ها بالای فهرست (ترتیب هنگام باز شدن پنجره ثابت می‌ماند)
+        val ordered = remember(options) {
+            options.filter { it.first in selected } + options.filter { it.first !in selected }
+        }
+        val q = query.trim()
+        val filtered = if (q.isEmpty()) ordered else ordered.filter {
+            it.second.contains(q, ignoreCase = true) ||
+                (searchText?.invoke(it.first)?.contains(q, ignoreCase = true) == true)
+        }
+        Dialog(onDismissRequest = { open = false }) {
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = GlassBar,
+                border = BorderStroke(1.dp, GlassStroke),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 600.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = label + if (picked.isEmpty()) "" else "  (${picked.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(searchPlaceholder, color = Ink3, fontSize = 13.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.small,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = FieldBg,
+                            focusedContainerColor = CardBg,
+                            focusedBorderColor = Brand,
+                            unfocusedBorderColor = Line
+                        )
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                        items(filtered, key = { it.first }) { (v, l) ->
+                            PickerRow(l, v in picked) {
+                                if (v in picked) picked.remove(v) else picked.add(v)
+                            }
+                        }
+                        if (filtered.isEmpty()) {
+                            item {
+                                Text(
+                                    "—",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { picked.clear() },
+                            enabled = picked.isNotEmpty(),
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small
+                        ) { Text(clearLabel) }
+                        Button(
+                            onClick = { onChange(picked.toList()); open = false },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            colors = ButtonDefaults.buttonColors(containerColor = Brand)
+                        ) { Text(doneLabel + if (picked.isEmpty()) "" else " (${picked.size})") }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun SelectChip(
@@ -790,4 +959,56 @@ fun photoModel(path: String): Any? = when {
     path.isBlank() -> null
     path.startsWith("/") -> java.io.File(path)
     else -> path
+}
+
+
+/** انتخاب پیش‌شماره از میان همه‌ی کشورهای دنیا (v45) */
+@Composable
+fun PhoneCountryPicker(
+    label: String,
+    country: PhoneCountry,
+    uiLang: String,
+    searchPlaceholder: String,
+    onSelect: (PhoneCountry) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val options = remember(uiLang) {
+        PhoneCountry.sortedFor(uiLang).map { it.iso to it.label(uiLang) }
+    }
+    PickerField(
+        label = label,
+        value = country.label(uiLang),
+        placeholder = "",
+        options = options,
+        onSelect = { onSelect(PhoneCountry.ofIso(it)) },
+        modifier = modifier,
+        searchable = true,
+        searchPlaceholder = searchPlaceholder,
+        matcher = { v, q -> PhoneCountry.ofIso(v).searchText(uiLang).contains(q, ignoreCase = true) }
+    )
+}
+
+/** «زبان‌هایی که بلدم» — چندانتخابی از همه‌ی زبان‌های زنده‌ی دنیا (v45) */
+@Composable
+fun SpokenLangsField(
+    loc: Loc,
+    selected: List<String>,
+    onChange: (List<String>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val langs = remember(loc.code) { WorldLanguages.all(loc.code) }
+    val options = remember(langs) { langs.map { it.code to it.label } }
+    val search = remember(langs) { langs.associate { it.code to it.search } }
+    MultiPickerField(
+        label = loc["spoken_langs"],
+        selected = selected,
+        options = options,
+        onChange = onChange,
+        placeholder = loc["spoken_langs_ph"],
+        searchPlaceholder = loc["search_lang"],
+        doneLabel = loc["confirm_sel"],
+        clearLabel = loc["clear_sel"],
+        modifier = modifier,
+        searchText = { search[it] ?: "" }
+    )
 }

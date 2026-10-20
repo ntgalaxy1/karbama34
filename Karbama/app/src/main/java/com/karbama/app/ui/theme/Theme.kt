@@ -35,7 +35,7 @@ val Ink3 = Color(0xFF57697A)           // متن کم‌رنگ/راهنما — 
 val Line = Color(0xFFE3ECF0)           // خط و قاب
 val Surface = Color(0xFFF6FAFB)        // سطح روشن
 val FieldBg = Color(0xFFF8FBFC)        // زمینه‌ی فیلد ورودی
-val CardBg = Color(0xE6FFFFFF)
+val CardBg = Color(0xFFFFFFFF)         // v44: مات و یک‌رنگ مثل دمو (بدون دو رنگی با سایه)
 val Bg = Color(0x00000000)             // شفاف تا مِش رنگی ریشه دیده شود
 
 // ---------- لهجه‌ها ----------
@@ -87,10 +87,10 @@ val PhMid = Color(0xFFC6D5DE)
 val PhLow = Color(0xFFD9E4EA)
 
 // ---------- شیشه‌ی مات (glassmorphism) ----------
-val GlassFill = Color(0xCCFFFFFF)
-val GlassFillSoft = Color(0x99FFFFFF)
+val GlassFill = Color(0xFFFFFFFF)       // v44: مات
+val GlassFillSoft = Color(0xFFF6FAFB)   // v44: مات
 val GlassStroke = Color(0xB3FFFFFF)
-val GlassBar = Color(0xE6FFFFFF)
+val GlassBar = Color(0xFFFFFFFF)        // v44: مات
 
 // ---------- گرادیان‌ها ----------
 val BrandBrush = Brush.linearGradient(listOf(Brand, Color(0xFF0A8E8C), BrandDeep))

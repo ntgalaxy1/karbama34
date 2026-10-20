@@ -17,6 +17,27 @@ class AppPrefs(context: Context) {
 
     private val sp = context.applicationContext
         .getSharedPreferences("karbama_prefs", Context.MODE_PRIVATE)
+    private val loginVault = SecureLoginVault(context.applicationContext)
+
+    init {
+        migratePaymentV38Default()
+        // نسخه‌های قدیمی نام/رمز مدیر را در SharedPreferences داشتند.
+        // مسیر مدیریت اکنون فقط Firebase Authentication است؛ داده‌های قدیمی پاک می‌شوند.
+        sp.edit().remove(K_LEGACY_ADMIN_USER).remove(K_LEGACY_ADMIN_PASS).apply()
+    }
+
+    /**
+     * v38 price migration: the former built-in ads default was ₺6000; the new
+     * launch price is ₺500.  This runs just once so a later explicit manager
+     * update (including a deliberate ₺6000) is never overwritten again.
+     */
+    private fun migratePaymentV38Default() {
+        if (sp.getBoolean(K_PAYMENT_V38_MIGRATED, false)) return
+        if (sp.contains(K_ADS_FEE) && sp.getLong(K_ADS_FEE, 0L) == 6000L) {
+            sp.edit().putLong(K_ADS_FEE, Config.DEFAULT_ADS_FEE).apply()
+        }
+        sp.edit().putBoolean(K_PAYMENT_V38_MIGRATED, true).apply()
+    }
 
     var lang: String?
         get() = sp.getString(K_LANG, null)
@@ -54,16 +75,6 @@ class AppPrefs(context: Context) {
         get() = sp.getLong(K_ADS_FEE, Config.DEFAULT_ADS_FEE)
         set(v) = sp.edit().putLong(K_ADS_FEE, v).apply()
 
-    // ---------- یوزرنیم و پسورد مدیر (از تنظیمات پنل قابل تغییر) ----------
-
-    var adminUsername: String
-        get() = sp.getString(K_ADMIN_USER, Config.ADMIN_USERNAME) ?: Config.ADMIN_USERNAME
-        set(v) = sp.edit().putString(K_ADMIN_USER, v).apply()
-
-    var adminPassword: String
-        get() = sp.getString(K_ADMIN_PASS, Config.ADMIN_PASSWORD) ?: Config.ADMIN_PASSWORD
-        set(v) = sp.edit().putString(K_ADMIN_PASS, v).apply()
-
     // ---------- ورود دومرحله‌ای (2FA / TOTP) ----------
 
     var twoFactorEnabled: Boolean
@@ -81,6 +92,15 @@ class AppPrefs(context: Context) {
     // ---------- پروفایل خودم ----------
 
     fun saveMyProfile(a: Applicant) = sp.edit().putString(K_MY_PROFILE, a.toJson().toString()).apply()
+
+    fun clearMyProfile() = sp.edit().remove(K_MY_PROFILE).remove(K_MY_ID).apply()
+
+    /** Saved only after successful sign-in; encrypted with an Android Keystore key. */
+    fun saveRememberedLogin(username: String, password: String) = loginVault.save(username, password)
+
+    fun rememberedLogin(): SavedLogin? = loginVault.read()
+
+    fun clearRememberedLogin() = loginVault.clear()
 
     fun myProfile(): Applicant? {
         val raw = sp.getString(K_MY_PROFILE, null) ?: return null
@@ -149,7 +169,10 @@ class AppPrefs(context: Context) {
         }.getOrNull()
     }
 
-    fun clearAll() = sp.edit().clear().apply()
+    fun clearAll() {
+        loginVault.clear()
+        sp.edit().clear().apply()
+    }
 
     private companion object {
         const val K_LANG = "lang"
@@ -164,9 +187,10 @@ class AppPrefs(context: Context) {
         const val K_BROKER_FEE = "broker_fee"
         const val K_BROKER_CARD = "broker_card"
         const val K_ADS_FEE = "ads_fee"            // #34
+        const val K_PAYMENT_V38_MIGRATED = "payment_v38_migrated"
         const val K_BROKER_HOLDER = "broker_holder"
-        const val K_ADMIN_USER = "admin_user"
-        const val K_ADMIN_PASS = "admin_pass"
+        const val K_LEGACY_ADMIN_USER = "admin_user"
+        const val K_LEGACY_ADMIN_PASS = "admin_pass"
         const val K_2FA_ON = "two_factor_on"
         const val K_2FA_SECRET = "two_factor_secret"
         const val K_2FA_RECOVERY = "two_factor_recovery"
@@ -246,6 +270,7 @@ fun Applicant.toJson(): JSONObject = JSONObject().apply {
     put("district", district)
     put("address", address)
     put("jobKeys", JSONArray(jobKeys))
+    put("spokenLangs", JSONArray(spokenLangs))
     put("trLevel", trLevel)
     put("gender", gender)
     put("idPhotoUrl", idPhotoUrl)
@@ -258,6 +283,9 @@ fun Applicant.toJson(): JSONObject = JSONObject().apply {
     put("phoneLocal", phoneLocal)
     put("payStatus", payStatus)          // #34
     put("payAt", payAt)                  // #34
+    put("payMethod", payMethod)          // v38
+    put("payReference", payReference)
+    put("payReceiptUrl", payReceiptUrl)
     put("undertaking", undertaking?.toJson())
 }
 
@@ -299,6 +327,7 @@ fun jsonToApplicant(o: JSONObject): Applicant = Applicant(
     district = o.optString("district"),
     address = o.optString("address"),
     jobKeys = o.optJSONArray("jobKeys").toStringList(),
+    spokenLangs = o.optJSONArray("spokenLangs").toStringList(),
     trLevel = o.optInt("trLevel"),
     gender = o.optString("gender"),
     idPhotoUrl = o.optString("idPhotoUrl"),
@@ -311,6 +340,9 @@ fun jsonToApplicant(o: JSONObject): Applicant = Applicant(
     phoneLocal = o.optString("phoneLocal", ""),
     payStatus = o.optString("payStatus", ""),      // #34
     payAt = o.optLong("payAt", 0L),                // #34
+    payMethod = o.optString("payMethod", ""),      // v38
+    payReference = o.optString("payReference", ""),
+    payReceiptUrl = o.optString("payReceiptUrl", ""),
     undertaking = o.optJSONObject("undertaking")?.let { jsonToUndertaking(it) }
 )
 

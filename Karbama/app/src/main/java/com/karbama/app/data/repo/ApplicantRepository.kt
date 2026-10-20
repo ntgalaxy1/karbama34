@@ -19,7 +19,7 @@ class ApplicantRepository {
 
     /**
      * ثبت‌نام متقاضی.
-     * در حالت متصل: ورود ناشناس + آپلود دو عکس در Storage + ثبت سند در Firestore
+     * در حالت متصل: ورود ناشناس + ذخیره‌ی دو عکس در Firestore (v48) + ثبت سند در Firestore
      * در حالت نمایشی: ذخیره روی خود گوشی
      */
     suspend fun submit(
@@ -29,9 +29,8 @@ class ApplicantRepository {
     ): Result<Applicant> {
         val db = Service.db
         val auth = Service.auth
-        val storage = Service.storage
 
-        if (db == null || auth == null || storage == null) {
+        if (db == null || auth == null) {
             // ---------- حالت نمایشی ----------
             val id = applicant.id.ifEmpty { "local_" + System.currentTimeMillis() }
             val saved = applicant.copy(
@@ -51,10 +50,10 @@ class ApplicantRepository {
             val uid = user?.uid ?: throw IllegalStateException("auth failed")
 
             val idUrl = idCardBytes?.let {
-                uploadPhoto("${Config.STORAGE_ROOT}/$uid/id_card.jpg", it)
+                FirestoreFiles.putApplicantImage(uid, FirestoreFiles.KIND_ID_CARD, it)
             } ?: ""
             val bodyUrl = bodyPhotoBytes?.let {
-                uploadPhoto("${Config.STORAGE_ROOT}/$uid/body_photo.jpg", it)
+                FirestoreFiles.putApplicantImage(uid, FirestoreFiles.KIND_BODY, it)
             } ?: ""
 
             val saved = applicant.copy(
@@ -64,15 +63,10 @@ class ApplicantRepository {
                 idPhotoUrl = idUrl,
                 bodyPhotoUrl = bodyUrl
             )
-            db.collection(Config.COL_APPLICANTS).document(uid).set(saved.toMap()).await()
+            // v49: «paymentAt» را فقط مدیر می‌نویسد (قوانین Firestore) → هنگام ساخت فرستاده نمی‌شود
+            db.collection(Config.COL_APPLICANTS).document(uid).set(saved.toMap() - "paymentAt").await()
             saved
         }
-    }
-
-    private suspend fun uploadPhoto(path: String, bytes: ByteArray): String {
-        val ref = Service.storage!!.reference.child(path)
-        ref.putBytes(bytes).await()
-        return ref.downloadUrl.await().toString()
     }
 
     /** فهرست متقاضیان برای پنل مدیریت */
@@ -102,6 +96,55 @@ class ApplicantRepository {
         }
         return runCatching {
             db.collection(Config.COL_APPLICANTS).document(id).update("status", status).await()
+        }
+    }
+
+    /**
+     * v38: Submit a bounded bank/card-to-card receipt for manager review.
+     * The client can only create a `pending` request. It never sets `paid`.
+     * In connected mode the compressed JPEG goes to applicantFiles/{uid}/files/payment_receipt (Firestore, v48);
+     * in demo mode it remains private app storage so the manager screen can still inspect it.
+     */
+    suspend fun submitManualPayment(
+        applicant: Applicant,
+        reference: String,
+        receiptBytes: ByteArray
+    ): Result<Applicant> {
+        val safeReference = reference.trim().filter { it.isLetterOrDigit() || it == '-' }.take(32)
+        if (safeReference.length < 3) return Result.failure(IllegalArgumentException("payment reference is required"))
+        if (receiptBytes.isEmpty() || receiptBytes.size > 5 * 1024 * 1024) {
+            return Result.failure(IllegalArgumentException("receipt image must be at most 5 MB"))
+        }
+        val at = System.currentTimeMillis()
+        val db = Service.db
+        val auth = Service.auth
+        if (db == null || auth == null) {
+            val receiptPath = LocalPhotoCache.save(applicant.id, "payment_receipt", receiptBytes)
+            val saved = applicant.copy(
+                payStatus = "pending", payAt = at, payMethod = "manual",
+                payReference = safeReference, payReceiptUrl = receiptPath
+            )
+            LocalStore.upsertApplicant(saved)
+            return Result.success(saved)
+        }
+        return runCatching {
+            val uid = auth.currentUser?.uid ?: throw IllegalStateException("auth required")
+            if (uid != applicant.id && uid != applicant.uid) throw SecurityException("payment owner mismatch")
+            val receiptUrl = FirestoreFiles.putApplicantImage(uid, FirestoreFiles.KIND_RECEIPT, receiptBytes)
+            val saved = applicant.copy(
+                payStatus = "pending", payAt = at, payMethod = "manual",
+                payReference = safeReference, payReceiptUrl = receiptUrl
+            )
+            // v49: بدون paymentAt — زمان تأیید را مدیر ثبت می‌کند
+            db.collection(Config.COL_APPLICANTS).document(applicant.id).update(
+                mapOf(
+                    "paymentStatus" to saved.payStatus,
+                    "paymentMethod" to saved.payMethod,
+                    "paymentReference" to saved.payReference,
+                    "paymentReceiptUrl" to saved.payReceiptUrl
+                )
+            ).await()
+            saved
         }
     }
 
@@ -183,8 +226,16 @@ class ApplicantRepository {
             return Result.success(Unit)
         }
         return runCatching {
+            // v49: فقط فیلدهای پروفایل، به‌صورت ادغام (merge):
+            //  · فیلدهای پرداخت را فقط مسیر پرداخت/مدیر تغییر می‌دهد (قوانین Firestore)
+            //  · «status» مال مدیر است و نباید با نسخه‌ی قدیمی گوشی بازنویسی شود
             db.collection(Config.COL_APPLICANTS).document(applicant.id)
-                .set(applicant.toMap()).await()
+                .set(applicant.toMap() - ADMIN_OR_PAYMENT_KEYS, com.google.firebase.firestore.SetOptions.merge())
+                .await()
         }
     }
+
+    private val ADMIN_OR_PAYMENT_KEYS = setOf(
+        "status", "paymentStatus", "paymentAt", "paymentMethod", "paymentReference", "paymentReceiptUrl"
+    )
 }

@@ -1,0 +1,411 @@
+/** #27/v46: دکمه‌ی «افزودن آگهی» دمو (.admin-add) — مربع طلایی با «+» (در گوشی، متن پنهان است) */
+@Composable
+private fun AdminAddButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier
+            .size(40.dp)
+            .shadow(6.dp, shape, ambientColor = Accent, spotColor = Accent)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFFFFB020), Color(0xFFF59E0B))))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Filled.Add,
+            contentDescription = text,
+            tint = WarnDeep,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+/** #25/v46: دکمه‌ی خروج دمو (.admin-exit) — قاب سفید نیمه‌شفاف، زمینه‌ی تیره‌ی مات، آیکون + متن */
+@Composable
+private fun AdminExitButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        Modifier
+            .height(40.dp)
+            .clip(shape)
+            .background(Color(0xFF08606E))      // معادل مات rgba(6,50,58,.4) روی نوار → بدون دو رنگی
+            .border(1.4.dp, Color.White.copy(alpha = 0.55f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.AutoMirrored.Filled.Logout,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun IconTextButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    onClick: () -> Unit
+) {
+    TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+        Icon(icon, contentDescription = null, tint = Ink2, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun AdmLabel(text: String) {
+    Text(
+        text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.ExtraBold,
+        color = Ink2,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun AdmField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    revealed: Boolean = false,
+    revealable: Boolean = false,
+    onToggleReveal: () -> Unit = {},
+    revealLabel: String = "",
+    isError: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        isError = isError,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+        placeholder = placeholder?.let {
+            { Text(it, color = Ink3, style = MaterialTheme.typography.bodyLarge) }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .shadow(3.dp, AdmFieldShape),
+        shape = AdmFieldShape,
+        visualTransformation = if (revealable && !revealed) PasswordVisualTransformation()
+        else VisualTransformation.None,
+        trailingIcon = if (revealable) {
+            {
+                IconButton(onClick = onToggleReveal) {
+                    Icon(
+                        imageVector = if (revealed) Icons.Filled.VisibilityOff
+                        else Icons.Filled.Visibility,
+                        contentDescription = revealLabel,
+                        tint = Ink3
+                    )
+                }
+            }
+        } else null,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        colors = admFieldColors()
+    )
+}
+
+/** عنوان بخش دمو (.sec-title) + توضیح کم‌رنگ زیر آن */
+@Composable
+private fun AdmSection(title: String, hint: String?) {
+    SectionTitle(title)
+    if (hint != null) {
+        Spacer(Modifier.height(4.dp))
+        Text(hint, fontSize = 13.sp, color = Ink3, lineHeight = 24.sp)
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/**
+ * v46: تب «تنظیمات» عین دمو:
+ *  ۱) یک کارت: تنظیمات کارگزار (کارت بانکی) ── هزینه نمایش آگهی‌ها ── 💾 ذخیره
+ *  ۲) کارت ورود دومرحله‌ای
+ *  ۳) کارت خلاصه‌ی خاکستری (کارت کارگزار، وضعیت ۲FA، تعهدنامه‌های امضاشده)
+ * بخش «یوزرنیم/پسورد مدیر» دمو عمداً حذف است: ورود مدیر فقط با Firebase است
+ * و هیچ اطلاعات ورود مدیر در برنامه نمایش داده یا ذخیره نمی‌شود.
+ */
+@Composable
+private fun AdminSettingsTab(
+    loc: Loc,
+    brokerCard: String,
+    adsFee: Long = 6000L,                       // #34
+    onSaveAdsFee: (Long) -> Unit = {},          // #34
+    twoFAEnabled: Boolean,
+    twoFAPending: Boolean,
+    twoFASecret: String,
+    twoFARecovery: String,
+    twoFAUri: String,
+    onSave: (String) -> Unit,
+    onBegin2FA: () -> Unit,
+    onConfirm2FA: (String) -> Boolean,
+    onDisable2FA: () -> Unit,
+    signedCount: Int = 0,
+    totalCount: Int = 0,
+    modifier: Modifier = Modifier,
+    tabs: @Composable () -> Unit = {}
+) {
+    var cardText by remember { mutableStateOf(FormatUtils.formatCard(brokerCard)) }
+    var adsFeeText by remember(adsFee) { mutableStateOf(adsFee.toString()) }   // #34
+    var secretShown by remember { mutableStateOf(false) }
+    var recoveryShown by remember { mutableStateOf(false) }
+    var codeText by remember { mutableStateOf("") }
+    var codeBad by remember { mutableStateOf(false) }
+    var saved by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    Column(
+        modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp)
+    ) {
+        tabs()
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- ۱) کارگزار + هزینه‌ی نمایش آگهی‌ها (یک کارت، مثل دمو) ----------
+        AdmCard(padding = 16.dp) {
+            AdmSection(loc["und_adminSettings"], loc["und_adminHint"])
+            AdmLabel(loc["und_adminCard"])
+            AdmField(
+                value = cardText,
+                onValueChange = { input ->
+                    cardText = FormatUtils.formatCard(input)
+                    saved = false
+                },
+                placeholder = "1234 1234 1234 1234",
+                keyboardType = KeyboardType.Number
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(loc["adm2_card_hint"], fontSize = 13.sp, color = Ink3, lineHeight = 20.sp)
+            if (cardText.isNotBlank() && !FormatUtils.cardIsValid(cardText)) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "⚠️ " + loc["und_cardWarn"],
+                    fontSize = 13.sp,
+                    color = Danger,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = Line)
+            Spacer(Modifier.height(16.dp))
+
+            AdmSection(loc["pay_ads_fee"], loc["pay_ads_fee_hint"])
+            AdmLabel(loc["pay_amount"])
+            AdmField(
+                value = adsFeeText,
+                onValueChange = { v ->
+                    adsFeeText = FormatUtils.digitsOnly(v, 9)
+                    saved = false
+                },
+                placeholder = "500",
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                loc.money(adsFeeText.toLongOrNull() ?: adsFee),
+                fontSize = 13.sp,
+                color = Ink3
+            )
+            Spacer(Modifier.height(12.dp))
+            PrimaryButton(
+                text = "💾 " + loc["save"],
+                onClick = {
+                    onSave(FormatUtils.digitsOnly(cardText, 16))
+                    onSaveAdsFee(adsFeeText.toLongOrNull() ?: adsFee)
+                    saved = true
+                }
+            )
+            if (saved) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "✅ " + loc["adm2_saved"],
+                    fontSize = 13.sp,
+                    color = Ok,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- ۲) ورود دومرحله‌ای (2FA) ----------
+        AdmCard(padding = 16.dp) {
+            AdmSection(loc["twofa_title"], loc["twofa_hint"])
+            Text(
+                text = (if (twoFAEnabled) "🟢 " else "⚪ ") +
+                    loc[if (twoFAEnabled) "twofa_on" else "twofa_off"],
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (twoFAEnabled) OkDeep else Ink3
+            )
+
+            if (!twoFAEnabled && !twoFAPending) {
+                Spacer(Modifier.height(12.dp))
+                PrimaryButton(
+                    text = "🔐 " + loc["twofa_enable"],
+                    onClick = onBegin2FA
+                )
+            }
+
+            if (twoFAPending || twoFAEnabled) {
+                Spacer(Modifier.height(12.dp))
+                Text(loc["twofa_scan"], fontSize = 13.sp, color = Ink3, lineHeight = 22.sp)
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = FieldBg,
+                    border = BorderStroke(1.dp, Line),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (secretShown) TotpUtil.pretty(twoFASecret)
+                        else "•••• •••• •••• ••••",
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp, horizontal = 8.dp)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // #24: آیکون به‌جای ایموجی (ایموجی روی نوشته می‌افتاد)
+                    IconTextButton(
+                        icon = if (secretShown) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        text = loc[if (secretShown) "twofa_hide" else "twofa_show"],
+                        onClick = { secretShown = !secretShown }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    IconTextButton(
+                        icon = Icons.Filled.ContentCopy,
+                        text = loc["twofa_copy"],
+                        onClick = { clipboard.setText(AnnotatedString(twoFASecret)) }
+                    )
+                }
+                Text(
+                    twoFAUri,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Ink3,
+                    maxLines = 2
+                )
+
+                if (twoFAEnabled) {
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = Line)
+                    Spacer(Modifier.height(12.dp))
+                    SectionTitle(loc["twofa_recovery"])
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = AccentLight,
+                        border = BorderStroke(1.dp, SunLine),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (recoveryShown) twoFARecovery else "••••-••••",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+                    IconTextButton(
+                        icon = if (recoveryShown) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        text = loc[if (recoveryShown) "twofa_hide" else "twofa_show"],
+                        onClick = { recoveryShown = !recoveryShown }
+                    )
+                    Text(
+                        loc["twofa_recovery_note"],
+                        fontSize = 13.sp,
+                        color = Ink3,
+                        lineHeight = 22.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    GhostButton(
+                        text = "🚫 " + loc["twofa_disable"],
+                        onClick = onDisable2FA
+                    )
+                } else {
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = Line)
+                    Spacer(Modifier.height(12.dp))
+                    AdmLabel(loc["twofa_code"])
+                    AdmField(
+                        value = codeText,
+                        onValueChange = { codeText = it.filter { c -> c.isDigit() }.take(6); codeBad = false },
+                        placeholder = "123456",
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done,
+                        isError = codeBad
+                    )
+                    if (codeBad) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "⚠️ " + loc["twofa_wrong"],
+                            fontSize = 13.sp,
+                            color = Danger,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    PrimaryButton(
+                        text = "✅ " + loc["twofa_confirm"],
+                        enabled = codeText.length == 6,
+                        onClick = {
+                            if (onConfirm2FA(codeText)) {
+                                codeText = ""
+                                codeBad = false
+                                secretShown = false
+                            } else {
+                                codeBad = true
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ---------- ۳) کارت خلاصه‌ی خاکستری دمو ----------
+        AdmCard(padding = 16.dp, color = Color(0xFFF6FAFB)) {
+            @Composable
+            fun line(k: String, v: String) {
+                Row(Modifier.padding(vertical = 3.dp)) {
+                    Text("$k: ", fontSize = 13.sp, color = Ink3, lineHeight = 26.sp)
+                    Text(v, fontSize = 13.sp, color = Ink, fontWeight = FontWeight.Black, lineHeight = 26.sp)
+                }
+            }
+            line(
+                loc["und_brokerCard"],
+                if (cardText.isBlank()) "—" else loc.digits(cardText)
+            )
+            line(loc["twofa_title"], loc[if (twoFAEnabled) "twofa_on" else "twofa_off"])
+            line(loc["und_signed"], loc.n(signedCount) + " / " + loc.n(totalCount))
+        }
+    }
+}
+

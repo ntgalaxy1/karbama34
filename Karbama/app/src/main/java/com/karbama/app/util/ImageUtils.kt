@@ -78,4 +78,25 @@ object ImageUtils {
             out.toByteArray()
         }
     }.getOrNull()
+
+    /**
+     * v48: JPEG را آن‌قدر فشرده/کوچک می‌کند که زیر [maxBytes] شود
+     * (برای ذخیره در یک سند Firestore). اگر نشد → null.
+     */
+    fun fitUnder(bytes: ByteArray, maxBytes: Int): ByteArray? = runCatching {
+        if (bytes.size <= maxBytes) return@runCatching bytes
+        var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@runCatching null
+        repeat(8) {
+            for (q in intArrayOf(80, 70, 60, 50, 40)) {
+                val out = ByteArrayOutputStream().use { o ->
+                    bmp.compress(Bitmap.CompressFormat.JPEG, q, o); o.toByteArray()
+                }
+                if (out.size <= maxBytes) return@runCatching out
+            }
+            val w = (bmp.width * 0.8f).toInt().coerceAtLeast(1)
+            val h = (bmp.height * 0.8f).toInt().coerceAtLeast(1)
+            bmp = Bitmap.createScaledBitmap(bmp, w, h, true)
+        }
+        null
+    }.getOrNull()
 }

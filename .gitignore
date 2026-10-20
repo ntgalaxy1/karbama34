@@ -27,3 +27,8 @@ kb-tools/demo.js
 kb-tools/run-*.js
 kb-tools/shots/
 .sudo_as_admin_successful
+
+# ---------- ابزارهای محلی v38 ----------
+Karbama/.kotlin/
+Karbama/functions/node_modules/
+.emulator_console_auth_token

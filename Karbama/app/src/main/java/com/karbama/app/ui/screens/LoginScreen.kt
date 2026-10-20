@@ -25,7 +25,16 @@ import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.theme.*
 
 /** نتیجه‌ی تلاش برای ورود */
-enum class LoginOutcome { ADMIN, ADMIN_2FA, USER, FAIL }
+enum class LoginOutcome {
+    ADMIN,
+    ADMIN_2FA,
+    USER,
+    FAIL,
+    ADMIN_AUTH_REJECTED,
+    ADMIN_NOT_AUTHORIZED,
+    ADMIN_NETWORK_ERROR,
+    ADMIN_FIREBASE_ERROR
+}
 
 /**
  * ورود به برنامه — یکی برای همه: کاربر عادی با نام کاربری/شماره تلفن خودش،
@@ -35,6 +44,8 @@ enum class LoginOutcome { ADMIN, ADMIN_2FA, USER, FAIL }
 fun LoginScreen(
     loc: Loc,
     busy: Boolean,
+    savedUsername: String,
+    savedPassword: String,
     onLogin: (String, String, (LoginOutcome) -> Unit) -> Unit,
     onTwoFactor: (String, (Boolean) -> Unit) -> Unit,
     onRegister: () -> Unit,
@@ -42,8 +53,8 @@ fun LoginScreen(
 ) {
     SystemBars(darkIcons = true)
 
-    var user by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+    var user by remember(savedUsername) { mutableStateOf(savedUsername) }
+    var pass by remember(savedPassword) { mutableStateOf(savedPassword) }
     var error by remember { mutableStateOf<String?>(null) }
     var stage2 by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
@@ -69,7 +80,7 @@ fun LoginScreen(
                             .background(BrandLight),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Security, contentDescription = null, tint = BrandDark)
+                        Text("🔑", fontSize = 20.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -142,7 +153,10 @@ fun LoginScreen(
                     value = user,
                     onValueChange = { user = it; error = null },
                     label = loc["login_user"],
-                    placeholder = "rezaei",
+                    placeholder = "rezaei یا name@example.com",
+                    // هم نام کاربری انگلیسی و هم ایمیل مدیر پذیرفته می‌شود؛
+                    // صفحه‌کلید ایمیل، @ و . را در دسترس قرار می‌دهد.
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Email,
                     imeAction = ImeAction.Next
                 )
                 Spacer(Modifier.height(16.dp))
@@ -178,6 +192,10 @@ fun LoginScreen(
                             onLogin(user.trim(), pass) { outcome ->
                                 when (outcome) {
                                     LoginOutcome.FAIL -> error = loc["login_fail"]
+                                    LoginOutcome.ADMIN_AUTH_REJECTED -> error = loc["admin_auth_rejected"] + adminDetail()
+                                    LoginOutcome.ADMIN_NOT_AUTHORIZED -> error = loc["admin_not_authorized"] + adminDetail()
+                                    LoginOutcome.ADMIN_NETWORK_ERROR -> error = loc["admin_network_error"] + adminDetail()
+                                    LoginOutcome.ADMIN_FIREBASE_ERROR -> error = loc["admin_firebase_error"] + adminDetail()
                                     LoginOutcome.ADMIN_2FA -> {
                                         stage2 = true
                                         code = ""
@@ -198,3 +216,7 @@ fun LoginScreen(
         }
     }
 }
+
+/** v42: کد کوتاه و امن خطای ورود مدیر (بدون متن خام خطا یا اطلاعات حساب) */
+private fun adminDetail(): String =
+    com.karbama.app.data.repo.AdminGate.lastDetail.takeIf { it.isNotBlank() }?.let { "\n(\u200E$it)" } ?: ""
