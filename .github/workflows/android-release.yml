@@ -76,11 +76,14 @@ jobs:
 
       - name: Test and build APK
         working-directory: Karbama
+        env:
+          # Robolectric screenshot tests read this JVM property directly.
+          JAVA_TOOL_OPTIONS: -Dkbshots.dir=${{ github.workspace }}/kb-tools/shots
         run: |
           set -euo pipefail
           chmod +x gradlew
           mkdir -p "$GITHUB_WORKSPACE/kb-tools/shots"
-          ./gradlew --no-daemon -Pkbshots -Dkbshots.dir="$GITHUB_WORKSPACE/kb-tools/shots" testDebugUnitTest assembleDebug
+          ./gradlew --no-daemon -Pkbshots testDebugUnitTest assembleDebug
 
       - name: Prepare verified release asset
         id: asset
