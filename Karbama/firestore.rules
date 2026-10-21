@@ -39,10 +39,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/accounts/$(uid)).data.createdBy == request.auth.uid;
     }
 
+    // Authentication credentials belong exclusively to Firebase Auth. Profile
+    // documents must never become a second credential store.
+    function hasNoAccountSecrets(data) {
+      return !data.keys().hasAny([
+        "password", "passwordHash", "passwordSalt", "credential", "secret"
+      ]);
+    }
+
     // Jobs: public read. Administrators manage all jobs; a collaborator can
     // manage only rows permanently stamped with their own UID.
     match /jobs/{jobId} {
-      allow read: if true;
+      allow read: if isAdmin()
+        || (isCollaborator() && resource.data.createdBy == request.auth.uid)
+        || (isSignedIn() && !isCollaborator());
       allow create: if isAdmin()
         || (isCollaborator() && request.resource.data.createdBy == request.auth.uid);
       allow update: if isAdmin()
@@ -55,7 +65,9 @@ service cloud.firestore {
 
     // Job images: public read, admin write
     match /jobFiles/{fileId} {
-      allow read: if true;
+      allow read: if isAdmin()
+        || (isCollaborator() && resource.data.owner == request.auth.uid)
+        || (isSignedIn() && !isCollaborator());
 
       function validJobImage() {
         return request.resource.data.contentType == "image/jpeg"
@@ -118,7 +130,8 @@ service cloud.firestore {
           && request.resource.data.get("paymentMethod", "") == ""
           && request.resource.data.get("paymentReference", "") == ""
           && request.resource.data.get("paymentReceiptUrl", "") == ""
-          && !request.resource.data.keys().hasAny(["paymentAt", "passwordHash"]);
+          && !request.resource.data.keys().hasAny(["paymentAt"])
+          && hasNoAccountSecrets(request.resource.data);
       }
 
       // A job seeker creates their own record. A collaborator may create only
@@ -136,7 +149,11 @@ service cloud.firestore {
 
       // Owner, originating collaborator, or main admin reads the profile.
       allow read: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin() || collaboratorOwnsApplicant(uid));
+        && (
+          request.auth.uid == uid
+          || isAdmin()
+          || (isCollaborator() && resource.data.createdBy == request.auth.uid)
+        );
 
       // Admin can update. The owner keeps the existing restricted payment path;
       // collaborator edits are limited to their own created applicant and can
@@ -147,7 +164,7 @@ service cloud.firestore {
           || (
             request.auth.uid == uid
             && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
-            && !request.resource.data.keys().hasAny(["passwordHash"])
+            && hasNoAccountSecrets(request.resource.data)
             && (
               !paymentFieldsChanged()
               || validManualRequest()
@@ -160,9 +177,10 @@ service cloud.firestore {
             collaboratorOwnsApplicant(uid)
             && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
             && !paymentFieldsChanged()
+            && hasNoAccountSecrets(request.resource.data)
             && !request.resource.data.diff(resource.data)
                  .affectedKeys()
-                 .hasAny(["paymentAt", "passwordHash"])
+                 .hasAny(["paymentAt"])
           )
         );
 
@@ -184,6 +202,7 @@ service cloud.firestore {
         && (
           resource.data.applicantId == request.auth.uid
           || isAdmin()
+          || collaboratorOwnsApplicant(resource.data.applicantId)
         );
 
       allow create: if isSignedIn()
@@ -193,6 +212,7 @@ service cloud.firestore {
         && (
           resource.data.applicantId == request.auth.uid
           || isAdmin()
+          || collaboratorOwnsApplicant(resource.data.applicantId)
         );
 
       allow update: if false;
@@ -204,6 +224,7 @@ service cloud.firestore {
         && (
           resource.data.applicantId == request.auth.uid
           || isAdmin()
+          || collaboratorOwnsApplicant(resource.data.applicantId)
         );
 
       allow create: if isSignedIn()
@@ -213,6 +234,7 @@ service cloud.firestore {
         && (
           resource.data.applicantId == request.auth.uid
           || isAdmin()
+          || collaboratorOwnsApplicant(resource.data.applicantId)
         );
 
       allow update: if false;
@@ -224,7 +246,11 @@ service cloud.firestore {
 
       // Owner, originating collaborator, or admin reads files.
       allow read: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin() || collaboratorOwnsApplicant(uid));
+        && (
+          request.auth.uid == uid
+          || isAdmin()
+          || (isCollaborator() && resource.data.createdBy == request.auth.uid)
+        );
 
       // The collaborator can upload only for an applicant they created. The
       // payload's owner remains the applicant UID, never the collaborator UID.
@@ -293,7 +319,9 @@ service cloud.firestore {
           && request.resource.data.updatedAt is int;
       }
 
-      allow read: if isSignedIn();
+      allow read: if isAdmin()
+        || (isCollaborator() && resource.data.ownerUid == request.auth.uid)
+        || (isSignedIn() && !isCollaborator());
       allow create: if validHotel()
         && (isAdmin() || (isCollaborator() && request.resource.data.ownerUid == request.auth.uid));
       allow update: if validHotel()

@@ -21,6 +21,7 @@ object Service {
     private var resolved = false
     private var _auth: FirebaseAuth? = null
     private var _db: FirebaseFirestore? = null
+    private var _functions: FirebaseFunctions? = null
     private var _storage: FirebaseStorage? = null
 
     fun init(application: Application) {

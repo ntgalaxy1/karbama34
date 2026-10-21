@@ -19,6 +19,7 @@ import com.karbama.app.data.repo.ApplicantRepository
 import com.karbama.app.data.repo.JobMediaStore
 import com.karbama.app.data.repo.JobRepository
 import com.karbama.app.data.repo.HotelRepository
+import com.karbama.app.data.repo.IdentityRepository
 import com.karbama.app.data.repo.UserActivityRepository
 import com.karbama.app.data.repo.ActivityItem
 import com.karbama.app.data.Config
@@ -48,6 +49,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val hotelRepo = HotelRepository()
     private val applicantRepo = ApplicantRepository()
     private val activityRepo = UserActivityRepository()
+    private val identityRepo = IdentityRepository()
 
     // ---------- زبان ----------
     var lang by mutableStateOf(prefs.lang ?: LANG_FA)
@@ -88,6 +90,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun applicantsFlow(live: Boolean): Flow<List<Applicant>> =
         if (live) applicantRepo.observeApplicants() else LocalStore.applicants
 
+    /** Collaborator queries are ownership-filtered so Firestore can enforce the scope. */
+    fun collaboratorJobsFlow(): Flow<List<Job>> = collaboratorUid?.let { jobRepo.observeJobsCreatedBy(it) }
+        ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    fun collaboratorHotelsFlow(): Flow<List<Hotel>> = collaboratorUid?.let { hotelRepo.observeHotelsOwnedBy(it) }
+        ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
     // ---------- وضعیت کاربر ----------
     var myProfile by mutableStateOf<Applicant?>(prefs.myProfile())
         private set
@@ -101,6 +110,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     var adminMode by mutableStateOf(prefs.adminMode)
         private set
+
+    /** UID is held only for the active collaborator session; it is never persisted. */
+    var collaboratorUid by mutableStateOf<String?>(null)
+        private set
+
+    val isCollaborator: Boolean get() = collaboratorUid != null
 
     var busy by mutableStateOf(false)
         private set
@@ -117,11 +132,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         LocalStore.init(prefs)
-        // اگر Firebase تنظیم شده، پروفایل واقعی را از سرور می‌خوانیم
-        viewModelScope.launch { refreshProfile() }
-        viewModelScope.launch {
-            jobs.collect { jobsLoaded = true; jobsNow = it }
-        }
+        // اگر Firebase تنظیم شده، نقش و پروفایل نشست واقعی را از سرور بازیابی می‌کنیم.
+        viewModelScope.launch { restoreSignedInSession() }
         // #29: اگر کاربر روی این دستگاه وارد شده، پسندیده/درخواست‌هایش با سرور هم‌گام می‌شود
         viewModelScope.launch { if (isRegistered) syncUserActivity() }
     }
@@ -131,7 +143,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val user = Service.auth?.currentUser ?: return
         if (AdminGate.isAdminAccount()) { adminMode = AdminMode.LIVE; prefs.adminMode = AdminMode.LIVE; return }
         if (runCatching { user.getIdToken(true).await().claims["karbamaRole"] as? String }.getOrNull() == "collaborator") {
-            collaboratorUid = user.uid; myProfile = null; prefs.clearMyProfile(); prefs.registered = true; return
+            collaboratorUid = user.uid
+            myProfile = null
+            prefs.clearMyProfile()
+            prefs.registered = true
+            adminMode = AdminMode.NONE
+            prefs.adminMode = AdminMode.NONE
+            return
         }
         refreshProfile()
     }
@@ -141,6 +159,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val uid = Service.currentUid ?: return
         val remote = applicantRepo.myProfile(uid)
         if (remote != null) {
+            collaboratorUid = null
             myProfile = remote
             prefs.registered = true
             prefs.saveMyProfile(remote)
@@ -456,8 +475,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- #29: فعالیت متقاضی برای پنل مدیر ----------
 
-    /** فهرست زنده‌ی آگهی‌ها (برای پیدا کردن آگهی هنگام ثبت در سرور) */
+    /** فهرست فعلیِ قابل‌دسترسی در نشست، برای ثبت پسند/درخواست کارجو. */
     private var jobsNow: List<Job> = emptyList()
+
+    /** Called by the root collector; avoids a second, unscoped listener for collaborators. */
+    fun recordVisibleJobs(items: List<Job>) {
+        jobsNow = items
+        jobsLoaded = true
+    }
 
     /** پسندیده‌ها و درخواست‌های یک متقاضی را زنده می‌خواند (فقط در حالت متصل) */
     fun watchApplicantActivity(applicantId: String): Flow<Pair<List<ActivityItem>, List<ActivityItem>>> =
@@ -593,6 +618,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun collaboratorApplicantsFlow(): Flow<List<Applicant>> = collaboratorUid?.let { applicantRepo.observeApplicantsCreatedBy(it) } ?: kotlinx.coroutines.flow.flowOf(emptyList())
 
     fun createApplicantForCollaborator(username: String, password: String, firstName: String, lastName: String, nationalId: String, phone: String) {
+        if (!isCollaborator) {
+            message = "⚠️ دسترسی همکار لازم است."
+            return
+        }
         viewModelScope.launch {
             busy = true
             val result = withContext(Dispatchers.IO) { runCatching {

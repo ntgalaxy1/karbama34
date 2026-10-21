@@ -60,7 +60,7 @@ fun RegistrationScreen(
     brokerFee: Long,
     brokerCard: String,
     brokerHolder: String,
-    onSubmit: (Applicant, ByteArray?, ByteArray?, Undertaking?) -> Unit,
+    onSubmit: (Applicant, String, ByteArray?, ByteArray?, Undertaking?) -> Unit,
     onBack: () -> Unit,
     // v50: بررسی تکراری‌بودن کد ملی/شماره تلفن → (nidTaken, phoneTaken)
     checkUnique: (String, String, (Boolean, Boolean) -> Unit) -> Unit = { _, _, cb -> cb(false, false) }
@@ -246,6 +246,7 @@ fun RegistrationScreen(
                                             consent = true,
                                             lang = loc.code
                                         ),
+                                        password,
                                         idPhoto?.bytes,
                                         bodyPhoto?.bytes,
                                         undertaking

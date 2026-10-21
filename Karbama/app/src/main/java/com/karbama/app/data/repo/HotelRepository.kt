@@ -36,6 +36,21 @@ class HotelRepository {
         }
     }
 
+    /** Ownership-filtered feed used by a collaborator session. */
+    fun observeHotelsOwnedBy(ownerUid: String): Flow<List<Hotel>> {
+        val db = Service.db ?: return demoHotels
+        return kotlinx.coroutines.flow.callbackFlow {
+            val registration = db.collection(Config.COL_HOTELS)
+                .whereEqualTo("ownerUid", ownerUid)
+                .limit(500)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) trySend(emptyList())
+                    else trySend(snapshot?.documents?.map { it.toHotel() }?.sortedByDescending { it.updatedAt } ?: emptyList())
+                }
+            awaitClose { registration.remove() }
+        }
+    }
+
     suspend fun save(hotel: Hotel): Result<Unit> {
         val clean = hotel.copy(
             countryCode = hotel.countryCode.trim().uppercase().take(2),

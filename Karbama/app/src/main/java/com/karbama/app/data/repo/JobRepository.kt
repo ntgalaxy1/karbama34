@@ -36,7 +36,22 @@ class JobRepository {
         }
     }
 
-    /** ثبت یا ویرایش آگهی (فقط مدیر) */
+    /** Ownership-filtered feed used by a collaborator session. */
+    fun observeJobsCreatedBy(ownerUid: String): Flow<List<Job>> {
+        val db = Service.db ?: return LocalStore.jobs
+        return callbackFlow {
+            val registration = db.collection(Config.COL_JOBS)
+                .whereEqualTo("createdBy", ownerUid)
+                .limit(400)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) trySend(emptyList())
+                    else trySend(snapshot?.documents?.map { it.toJob() }?.sortedByDescending { it.publishedAt } ?: emptyList())
+                }
+            awaitClose { registration.remove() }
+        }
+    }
+
+    /** ثبت یا ویرایش آگهی (فقط مدیر یا همکارِ مالک) */
     suspend fun saveJob(job: Job): Result<Unit> {
         val db = Service.db
         if (db == null) {

@@ -84,8 +84,17 @@ private object Routes {
 @Composable
 fun AppRoot(vm: AppViewModel, loc: Loc) {
     val nav = rememberNavController()
-    val jobs by vm.jobs.collectAsState()
-    val hotels by vm.hotels.collectAsState()
+    // Collaborators subscribe only to queries stamped with their UID. This is
+    // necessary for Firestore's ownership rules as well as the UI scope.
+    val jobsFlow = remember(vm.collaboratorUid) {
+        if (vm.isCollaborator) vm.collaboratorJobsFlow() else vm.jobs
+    }
+    val hotelsFlow = remember(vm.collaboratorUid) {
+        if (vm.isCollaborator) vm.collaboratorHotelsFlow() else vm.hotels
+    }
+    val jobs by jobsFlow.collectAsState(initial = emptyList())
+    val hotels by hotelsFlow.collectAsState(initial = emptyList())
+    LaunchedEffect(jobs) { vm.recordVisibleJobs(jobs) }
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(vm.message) {

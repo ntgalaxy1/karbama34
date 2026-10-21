@@ -248,7 +248,8 @@ fun AdminContent(
     onExit: () -> Unit,
     initialTab: Int = 0,                                     // v51: برای رندر آزمایشی تب‌ها
     adminEmail: String = "",                                 // v51: «یوزرنیم مدیر» = ایمیل Firebase
-    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") }   // v52
+    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") },
+    onCreateCollaborator: (String, String) -> Unit = { _, _ -> }
 ) {
     SystemBars(darkIcons = false)
 
@@ -333,6 +334,7 @@ fun AdminContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item { AdminTabs(loc, tab, applicants.size) { tab = it } }
+                item { CollaboratorProvisionCard(onCreateCollaborator) }
                 // ---------- آمار (فقط در تب آگهی‌ها، مثل دمو) ----------
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2213,5 +2215,17 @@ private fun ActivityCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CollaboratorProvisionCard(onCreate: (String, String) -> Unit) {
+    var user by remember { mutableStateOf("") }; var pass by remember { mutableStateOf("") }
+    AdmCard(padding = 16.dp) {
+        AdmSecTitle("حساب همکار")
+        Spacer(Modifier.height(6.dp)); Text("فقط مدیر اصلی می‌تواند حساب همکار ایجاد کند. ایمیل و هش رمز ذخیره نمی‌شود.", fontSize = 13.sp, color = Ink3)
+        Spacer(Modifier.height(10.dp)); AdmField(user, { user = it.lowercase() }, placeholder = "نام کاربری انگلیسی")
+        Spacer(Modifier.height(8.dp)); AdmField(pass, { pass = it }, placeholder = "رمز حداقل ۸ کاراکتر", keyboardType = KeyboardType.Password, revealable = true)
+        Spacer(Modifier.height(10.dp)); PrimaryButton(text = "ایجاد حساب همکار", onClick = { if (user.length >= 3 && pass.length >= 8) { onCreate(user, pass); pass = "" } })
     }
 }

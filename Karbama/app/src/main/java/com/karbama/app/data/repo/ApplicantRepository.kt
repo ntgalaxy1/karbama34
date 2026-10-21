@@ -121,10 +121,10 @@ class ApplicantRepository {
         val db = Service.db ?: return LocalStore.applicants
         return callbackFlow {
             val registration = db.collection(Config.COL_APPLICANTS).whereEqualTo("createdBy", collaboratorUid)
-                .orderBy("createdAt", Query.Direction.DESCENDING).limit(500)
+                .limit(500)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) trySend(emptyList())
-                    else trySend(snapshot?.documents?.map { it.toApplicant() } ?: emptyList())
+                    else trySend(snapshot?.documents?.map { it.toApplicant() }?.sortedByDescending { it.createdAt } ?: emptyList())
                 }
             awaitClose { registration.remove() }
         }

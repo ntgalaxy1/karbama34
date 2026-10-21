@@ -62,6 +62,8 @@ fun DocumentSnapshot.toHotel(): Hotel = Hotel(
     address = getString("address") ?: "",
     lat = getDouble("lat") ?: 0.0,
     lon = getDouble("lon") ?: 0.0,
+    ownerUid = getString("ownerUid") ?: "",
+    active = getBoolean("active") ?: true,
     updatedAt = getLong("updatedAt") ?: 0L
 )
 
@@ -148,6 +150,7 @@ fun Applicant.toMap(): Map<String, Any> = mapOf(
     "lastName" to lastName,
     "fatherName" to fatherName,
     "username" to username,
+    "createdBy" to createdBy,
     "nationalId" to nationalId,
     "otherJobs" to otherJobs,
     "phone" to phone,

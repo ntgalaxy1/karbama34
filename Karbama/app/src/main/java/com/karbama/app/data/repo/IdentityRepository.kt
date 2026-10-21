@@ -1,5 +1,100 @@
 package com.karbama.app.data.repo
-import com.google.firebase.auth.*
+
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseUser
 import com.karbama.app.data.Service
 import kotlinx.coroutines.tasks.await
-class IdentityRepository { enum class Role{APPLICANT,COLLABORATOR};data class SignedIn(val user:FirebaseUser,val role:Role);data class ProvisionedIdentity(val uid:String,val username:String);companion object{private val P=Regex("^[a-z][a-z0-9._-]{2,31}$");fun username(v:String)=v.trim().lowercase().also{require(P.matches(it))};fun email(v:String)="${username(v)}@users.karbama.invalid";fun password(v:String){require(v.length>=8)}};private fun auth()=Service.auth?:error("Auth unavailable");suspend fun createApplicant(u:String,p:String):FirebaseUser{password(p);val c=EmailAuthProvider.getCredential(email(u),p);return try{val n=auth().currentUser;(if(n?.isAnonymous==true)n.linkWithCredential(c).await().user else auth().createUserWithEmailAndPassword(email(u),p).await().user)?:error("No user")}catch(e:FirebaseAuthUserCollisionException){throw IllegalArgumentException("username_taken",e)}};suspend fun signIn(u:String,p:String):SignedIn{val x=auth().signInWithEmailAndPassword(email(u),p).await().user?:error("No user");return SignedIn(x,if(x.getIdToken(true).await().claims["karbamaRole"]=="collaborator")Role.COLLABORATOR else Role.APPLICANT)};suspend fun createCollaborator(u:String,p:String)=provision("provisionCollaboratorIdentity",u,p);suspend fun createApplicantForCollaborator(u:String,p:String)=provision("provisionApplicantIdentity",u,p);private suspend fun provision(n:String,u:String,p:String):ProvisionedIdentity{password(p);val q=username(u);@Suppress("UNCHECKED_CAST")val d=(Service.functions?:error("Functions unavailable")).getHttpsCallable(n).call(mapOf("username" to q,"password" to p)).await().data as? Map<String,Any?>?:error("Bad response");return ProvisionedIdentity(d["uid"] as? String?:error("No uid"),q)};fun signOut(){runCatching{Service.auth?.signOut()}}}
+
+/**
+ * Firebase Authentication boundary for the username/password experience.
+ *
+ * The deterministic address is an implementation detail required by Firebase
+ * Email/Password Auth. It is never displayed, collected, or stored as profile
+ * data. Passwords are passed only to Firebase Auth/callable Functions and are
+ * never serialized to Firestore or local preferences.
+ */
+class IdentityRepository {
+    enum class Role { APPLICANT, COLLABORATOR }
+
+    data class SignedIn(val user: FirebaseUser, val role: Role)
+    data class ProvisionedIdentity(val uid: String, val username: String)
+
+    companion object {
+        private val USERNAME = Regex("^[a-z][a-z0-9._-]{2,31}$")
+
+        fun username(value: String): String = value.trim().lowercase().also {
+            require(USERNAME.matches(it)) { "invalid_username" }
+        }
+
+        private fun authEmail(username: String): String =
+            "${username(username)}@users.karbama.invalid"
+
+        fun password(value: String) {
+            require(value.length >= 8) { "weak_password" }
+        }
+    }
+
+    private fun auth() = Service.auth ?: error("Auth unavailable")
+
+    /** Creates the jobseeker identity without writing password material anywhere. */
+    suspend fun createApplicant(username: String, password: String): FirebaseUser {
+        password(password)
+        val credential = EmailAuthProvider.getCredential(authEmail(username), password)
+        return try {
+            val current = auth().currentUser
+            val result = if (current?.isAnonymous == true) {
+                current.linkWithCredential(credential).await()
+            } else {
+                auth().createUserWithEmailAndPassword(authEmail(username), password).await()
+            }
+            result.user ?: error("No Firebase user returned")
+        } catch (error: FirebaseAuthUserCollisionException) {
+            throw IllegalArgumentException("username_taken", error)
+        }
+    }
+
+    suspend fun signIn(username: String, password: String): SignedIn {
+        password(password)
+        val user = auth().signInWithEmailAndPassword(authEmail(username), password).await().user
+            ?: error("No Firebase user returned")
+        val role = if (user.getIdToken(true).await().claims["karbamaRole"] == "collaborator") {
+            Role.COLLABORATOR
+        } else {
+            Role.APPLICANT
+        }
+        return SignedIn(user, role)
+    }
+
+    /** Main-manager-only callable; server verifies the manager before creating the identity. */
+    suspend fun createCollaborator(username: String, password: String): ProvisionedIdentity =
+        provision("provisionCollaboratorIdentity", username, password)
+
+    /** Collaborator-only callable; server stamps the collaborator as the immutable creator. */
+    suspend fun createApplicantForCollaborator(username: String, password: String): ProvisionedIdentity =
+        provision("provisionApplicantIdentity", username, password)
+
+    private suspend fun provision(
+        functionName: String,
+        username: String,
+        password: String
+    ): ProvisionedIdentity {
+        password(password)
+        val normalizedUsername = username(username)
+        @Suppress("UNCHECKED_CAST")
+        val data = (Service.functions ?: error("Functions unavailable"))
+            .getHttpsCallable(functionName)
+            .call(mapOf("username" to normalizedUsername, "password" to password))
+            .await()
+            .data as? Map<String, Any?>
+            ?: error("Bad provisioning response")
+        return ProvisionedIdentity(
+            uid = data["uid"] as? String ?: error("Missing provisioned UID"),
+            username = data["username"] as? String ?: normalizedUsername
+        )
+    }
+
+    fun signOut() {
+        runCatching { Service.auth?.signOut() }
+    }
+}

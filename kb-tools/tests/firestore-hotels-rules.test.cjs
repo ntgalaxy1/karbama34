@@ -10,7 +10,7 @@ const {
   assertFails,
   assertSucceeds,
 } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, setDoc, updateDoc, deleteDoc } = require("firebase/firestore");
+const { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } = require("firebase/firestore");
 
 const projectId = "karbama-hotels-demo";
 const rules = fs.readFileSync(
@@ -61,6 +61,7 @@ const hotel = (overrides = {}) => ({
 
     await assertSucceeds(setDoc(hotelRef, hotel({ ownerUid: "admin-1" })));
     await assertSucceeds(getDoc(doc(applicant, "hotels", "hotel-istanbul-demo")));
+    await assertFails(getDoc(doc(collaborator, "hotels", "hotel-istanbul-demo")));
     await assertFails(setDoc(doc(admin, "hotels", "bad-country"), hotel({ ownerUid: "admin-1", countryCode: "DE" })));
     await assertFails(setDoc(doc(admin, "hotels", "bad-lat"), hotel({ ownerUid: "admin-1", lat: 91 })));
     await assertFails(updateDoc(doc(applicant, "hotels", "hotel-istanbul-demo"), { name: "No access" }));
@@ -68,6 +69,10 @@ const hotel = (overrides = {}) => ({
 
     // An active collaborator may only create/update/delete records stamped with their UID.
     await assertSucceeds(setDoc(collaboratorHotelRef, hotel({ ownerUid: "collab-1" })));
+    await assertSucceeds(getDoc(collaboratorHotelRef));
+    await assertSucceeds(getDocs(query(collection(collaborator, "hotels"), where("ownerUid", "==", "collab-1"))));
+    await assertFails(getDocs(collection(collaborator, "hotels")));
+    await assertFails(getDoc(doc(otherCollaborator, "hotels", "hotel-collab-demo")));
     await assertFails(setDoc(doc(collaborator, "hotels", "hotel-spoofed-owner"), hotel({ ownerUid: "admin-1" })));
     await assertSucceeds(updateDoc(collaboratorHotelRef, { name: "Collaborator Hotel", updatedAt: 1792627200002 }));
     await assertFails(updateDoc(doc(otherCollaborator, "hotels", "hotel-collab-demo"), { name: "Takeover" }));
@@ -92,6 +97,8 @@ const hotel = (overrides = {}) => ({
     const collaboratorApplicantRef = doc(collaborator, "applicants", "applicant-1");
     await assertSucceeds(setDoc(collaboratorApplicantRef, applicantProfile));
     await assertSucceeds(getDoc(collaboratorApplicantRef));
+    await assertSucceeds(getDocs(query(collection(collaborator, "applicants"), where("createdBy", "==", "collab-1"))));
+    await assertFails(getDocs(collection(collaborator, "applicants")));
     await assertFails(getDoc(doc(otherCollaborator, "applicants", "applicant-1")));
     await assertSucceeds(updateDoc(collaboratorApplicantRef, { firstName: "Alireza" }));
     await assertFails(updateDoc(collaboratorApplicantRef, { createdBy: "collab-2" }));
@@ -100,6 +107,10 @@ const hotel = (overrides = {}) => ({
     // Jobs obey the same immutable createdBy ownership boundary.
     const ownJob = doc(collaborator, "jobs", "collab-job");
     await assertSucceeds(setDoc(ownJob, { title: "Cook", createdBy: "collab-1" }));
+    await assertSucceeds(getDoc(ownJob));
+    await assertSucceeds(getDocs(query(collection(collaborator, "jobs"), where("createdBy", "==", "collab-1"))));
+    await assertFails(getDocs(collection(collaborator, "jobs")));
+    await assertFails(getDoc(doc(otherCollaborator, "jobs", "collab-job")));
     await assertFails(setDoc(doc(collaborator, "jobs", "spoofed-job"), { title: "Cook", createdBy: "admin-1" }));
     await assertFails(updateDoc(doc(otherCollaborator, "jobs", "collab-job"), { title: "Takeover" }));
 
