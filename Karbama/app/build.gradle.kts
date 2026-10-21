@@ -6,6 +6,14 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// CI supplies these only for an official release. Debug builds intentionally never
+// fall back to this permanent signing identity.
+val releaseStoreFilePath = providers.gradleProperty("karbama.release.storeFile").orNull
+val releaseStorePassword = providers.gradleProperty("karbama.release.storePassword").orNull
+val releaseKeyAlias = providers.gradleProperty("karbama.release.keyAlias").orNull
+val releaseKeyPassword = providers.gradleProperty("karbama.release.keyPassword").orNull
+val hasReleaseSigning = listOf(releaseStoreFilePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
+
 // پلاگین Firebase فقط وقتی فعال می‌شود که فایل google-services.json را گذاشته باشی.
 // این کار باعث می‌شود پروژه حتی قبل از تنظیم Firebase هم کامپایل و اجرا شود.
 if (file("google-services.json").exists()) {
@@ -22,9 +30,24 @@ android {
         targetSdk = 35
         // هر انتشار رسمی، شمارهٔ نسخه و versionCode یکتای خودش را دارد تا Android
         // بتواند آن را به‌صورت به‌روزرسانیِ نسخهٔ قبلی نصب کند.
-        versionCode = 56
-        versionName = "52.0.4"
+        // v10.0.1 is the new permanent-signing baseline. versionCode remains
+        // monotonic so Android can recognise every later APK as an update.
+        versionCode = 10001
+        versionName = "10.0.1"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    signingConfigs {
+        create("permanentRelease") {
+            // Leave this incomplete for ordinary local/debug builds. assembleRelease
+            // is blocked below unless all four CI properties are present.
+            if (hasReleaseSigning) {
+                storeFile = file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -38,8 +61,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // برای تست سریع روی گوشی؛ قبل از انتشار در Google Play کلید امضای خودت را بگذار
-            signingConfig = signingConfigs.getByName("debug")
+            // There is deliberately no debug-key fallback for a public APK.
+            signingConfig = signingConfigs.getByName("permanentRelease")
         }
     }
 
@@ -55,6 +78,16 @@ android {
 
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
+}
+
+// Refuse to emit an official APK if the permanent release signer was not supplied.
+// This prevents a future accidental fallback to a newly generated debug keystore.
+tasks.matching { it.name == "validateSigningRelease" }.configureEach {
+    doFirst {
+        check(hasReleaseSigning) {
+            "Official release signing is not configured. Supply all karbama.release.* properties."
+        }
     }
 }
 
@@ -80,6 +113,7 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.functions)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
 
@@ -96,7 +130,9 @@ if (project.hasProperty("kbshots")) {
     android.testOptions.unitTests.isIncludeAndroidResources = true
     android.testOptions.unitTests.all {
         it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
-        it.maxHeapSize = "1536m"
+        // CI uses the historical 1536m default; constrained validation can lower this
+        // without changing production test semantics.
+        it.maxHeapSize = providers.gradleProperty("kbshots.testHeap").orNull ?: "1536m"
         it.testLogging.showStandardStreams = true
     }
     dependencies {

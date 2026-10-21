@@ -16,25 +16,63 @@ service cloud.firestore {
         );
     }
 
-    // Jobs: public read, admin write
+    // A collaborator role is minted only by the callable backend. The live
+    // collaborator document is checked too, so deactivating an account takes
+    // effect even before its custom token is refreshed.
+    function isCollaborator() {
+      return isSignedIn()
+        && request.auth.token.karbamaRole == "collaborator"
+        && exists(/databases/$(database)/documents/collaborators/$(request.auth.uid))
+        && get(/databases/$(database)/documents/collaborators/$(request.auth.uid)).data.active == true;
+    }
+
+    function collaboratorOwnsApplicant(uid) {
+      return isCollaborator()
+        && exists(/databases/$(database)/documents/applicants/$(uid))
+        && get(/databases/$(database)/documents/applicants/$(uid)).data.createdBy == request.auth.uid;
+    }
+
+    function collaboratorCreatedAccount(uid) {
+      return isCollaborator()
+        && exists(/databases/$(database)/documents/accounts/$(uid))
+        && get(/databases/$(database)/documents/accounts/$(uid)).data.role == "applicant"
+        && get(/databases/$(database)/documents/accounts/$(uid)).data.createdBy == request.auth.uid;
+    }
+
+    // Jobs: public read. Administrators manage all jobs; a collaborator can
+    // manage only rows permanently stamped with their own UID.
     match /jobs/{jobId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin()
+        || (isCollaborator() && request.resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin()
+        || (isCollaborator()
+          && resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdBy == resource.data.createdBy);
+      allow delete: if isAdmin()
+        || (isCollaborator() && resource.data.createdBy == request.auth.uid);
     }
 
     // Job images: public read, admin write
     match /jobFiles/{fileId} {
       allow read: if true;
 
-      allow create, update: if isAdmin()
-        && request.resource.data.contentType == "image/jpeg"
-        && request.resource.data.data is bytes
-        && request.resource.data.data.size() <= 950000
-        && request.resource.data.size is int
-        && request.resource.data.size
-             == request.resource.data.data.size();
+      function validJobImage() {
+        return request.resource.data.contentType == "image/jpeg"
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() <= 950000
+          && request.resource.data.size is int
+          && request.resource.data.size == request.resource.data.data.size()
+          && request.resource.data.owner is string;
+      }
 
-      allow delete: if isAdmin();
+      allow create: if validJobImage()
+        && (isAdmin() || (isCollaborator() && request.resource.data.owner == request.auth.uid));
+      allow update: if validJobImage()
+        && (isAdmin() || (isCollaborator()
+          && resource.data.owner == request.auth.uid
+          && request.resource.data.owner == resource.data.owner));
+      allow delete: if isAdmin() || (isCollaborator() && resource.data.owner == request.auth.uid);
     }
 
     // Applicants
@@ -75,29 +113,41 @@ service cloud.firestore {
           && request.resource.data.paymentReceiptUrl.size() > 0;
       }
 
-      // Applicant creates own profile
-      // Payment fields may only be absent or empty on create (the app sends ""),
-      // and paymentAt is never allowed (admin only).
+      function validFreshApplicant() {
+        return request.resource.data.get("paymentStatus", "") == ""
+          && request.resource.data.get("paymentMethod", "") == ""
+          && request.resource.data.get("paymentReference", "") == ""
+          && request.resource.data.get("paymentReceiptUrl", "") == ""
+          && !request.resource.data.keys().hasAny(["paymentAt", "passwordHash"]);
+      }
+
+      // A job seeker creates their own record. A collaborator may create only
+      // the Auth account already allocated to them by the trusted callable.
       allow create: if isSignedIn()
-        && request.auth.uid == uid
-        && request.resource.data.get("paymentStatus", "") == ""
-        && request.resource.data.get("paymentMethod", "") == ""
-        && request.resource.data.get("paymentReference", "") == ""
-        && request.resource.data.get("paymentReceiptUrl", "") == ""
-        && !request.resource.data.keys().hasAny([
-          "paymentAt"
-        ]);
+        && validFreshApplicant()
+        && (
+          (request.auth.uid == uid && request.resource.data.get("createdBy", "") == "")
+          || (
+            collaboratorCreatedAccount(uid)
+            && request.resource.data.uid == uid
+            && request.resource.data.get("createdBy", "") == request.auth.uid
+          )
+        );
 
-      // Owner or admin reads profile
+      // Owner, originating collaborator, or main admin reads the profile.
       allow read: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
+        && (request.auth.uid == uid || isAdmin() || collaboratorOwnsApplicant(uid));
 
-      // Admin can update; applicant has restricted payment updates
+      // Admin can update. The owner keeps the existing restricted payment path;
+      // collaborator edits are limited to their own created applicant and can
+      // never reassign it, change payment fields, or revive a legacy password hash.
       allow update: if isSignedIn()
         && (
           isAdmin()
           || (
             request.auth.uid == uid
+            && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
+            && !request.resource.data.keys().hasAny(["passwordHash"])
             && (
               !paymentFieldsChanged()
               || validManualRequest()
@@ -105,6 +155,14 @@ service cloud.firestore {
             && !request.resource.data.diff(resource.data)
                  .affectedKeys()
                  .hasAny(["paymentAt"])
+          )
+          || (
+            collaboratorOwnsApplicant(uid)
+            && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
+            && !paymentFieldsChanged()
+            && !request.resource.data.diff(resource.data)
+                 .affectedKeys()
+                 .hasAny(["paymentAt", "passwordHash"])
           )
         );
 
@@ -164,13 +222,14 @@ service cloud.firestore {
     // Path: applicantFiles/{uid}/files/{kind}
     match /applicantFiles/{uid}/files/{kind} {
 
-      // Owner or admin reads files
+      // Owner, originating collaborator, or admin reads files.
       allow read: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
+        && (request.auth.uid == uid || isAdmin() || collaboratorOwnsApplicant(uid));
 
-      // Owner uploads or replaces permitted images
+      // The collaborator can upload only for an applicant they created. The
+      // payload's owner remains the applicant UID, never the collaborator UID.
       allow create, update: if isSignedIn()
-        && request.auth.uid == uid
+        && (request.auth.uid == uid || collaboratorOwnsApplicant(uid))
         && kind in [
           "id_card",
           "body_photo",
@@ -198,20 +257,20 @@ service cloud.firestore {
         && request.resource.data.size
              == request.resource.data.data.size();
 
-      // Owner or admin deletes files
+      // Owner, originating collaborator, or admin deletes files
       allow delete: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
+        && (request.auth.uid == uid || isAdmin() || collaboratorOwnsApplicant(uid));
     }
 
-    // Hotels shown in the routing tab. Any authenticated user may read the
-    // manager-curated list; only an account listed in admins/{uid} may alter it.
+    // Hotels shown in the routing tab. The main admin manages all records; a
+    // collaborator can manage only an owned hotel, including city/address/location.
     match /hotels/{hotelId} {
       function validHotel() {
         return request.resource.data.keys().hasOnly([
-            "countryCode", "cityId", "name", "address", "lat", "lon", "updatedAt"
+            "countryCode", "cityId", "name", "address", "lat", "lon", "ownerUid", "active", "updatedAt"
           ])
           && request.resource.data.keys().hasAll([
-            "countryCode", "cityId", "name", "address", "lat", "lon", "updatedAt"
+            "countryCode", "cityId", "name", "address", "lat", "lon", "ownerUid", "active", "updatedAt"
           ])
           && request.resource.data.countryCode == "TR"
           && request.resource.data.cityId is string
@@ -228,12 +287,23 @@ service cloud.firestore {
           && request.resource.data.lon is number
           && request.resource.data.lon >= -180
           && request.resource.data.lon <= 180
+          && request.resource.data.ownerUid is string
+          && request.resource.data.ownerUid.size() <= 128
+          && request.resource.data.active is bool
           && request.resource.data.updatedAt is int;
       }
 
       allow read: if isSignedIn();
-      allow create, update: if isAdmin() && validHotel();
-      allow delete: if isAdmin();
+      allow create: if validHotel()
+        && (isAdmin() || (isCollaborator() && request.resource.data.ownerUid == request.auth.uid));
+      allow update: if validHotel()
+        && (isAdmin() || (
+          isCollaborator()
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+        ));
+      allow delete: if isAdmin()
+        || (isCollaborator() && resource.data.ownerUid == request.auth.uid);
     }
 
     // Duplicate registration prevention
@@ -252,7 +322,10 @@ service cloud.firestore {
             "kind",
             "createdAt"
           ])
-          && request.resource.data.owner == request.auth.uid
+          && (
+            request.resource.data.owner == request.auth.uid
+            || collaboratorCreatedAccount(request.resource.data.owner)
+          )
           && (
             (
               request.resource.data.kind == "nid"
@@ -277,18 +350,34 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && validKey();
 
-      // Owner may update only their own key
+      // Owner or originating collaborator may update a candidate's key, never change its type.
       allow update: if isSignedIn()
-        && resource.data.owner == request.auth.uid
+        && (resource.data.owner == request.auth.uid || collaboratorCreatedAccount(resource.data.owner))
         && validKey()
+        && request.resource.data.owner == resource.data.owner
         && request.resource.data.kind == resource.data.kind;
 
-      // Owner or admin may delete
+      // Owner, originating collaborator, or admin may delete
       allow delete: if isSignedIn()
         && (
           resource.data.owner == request.auth.uid
+          || collaboratorCreatedAccount(resource.data.owner)
           || isAdmin()
         );
+    }
+
+    // Account metadata is written exclusively by callable Functions. A user may
+    // read only their own non-secret record; admins may audit all records.
+    match /accounts/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Collaborator account metadata is also server-owned. The collaborator sees
+    // their own active state; only the main admin can inspect the directory.
+    match /collaborators/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
     }
 
     // Admin documents
