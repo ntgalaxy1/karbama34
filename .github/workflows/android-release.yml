@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag, for example v52.0.4 (must match app versionName)"
+        description: "Release tag, for example v10.0.1 (must match app versionName)"
         required: true
         type: string
       dry_run:
@@ -47,21 +47,22 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # Neither input is kept in Git. The keystore is restored at Android's normal
-      # debug-keystore location, preserving the signer used by existing releases.
-      - name: Restore Firebase configuration and signing key
+      - name: Restore Firebase configuration and permanent release signer
         env:
           KARBAMA_GOOGLE_SERVICES_JSON_B64: ${{ secrets.KARBAMA_GOOGLE_SERVICES_JSON_B64 }}
-          KARBAMA_DEBUG_KEYSTORE_B64: ${{ secrets.KARBAMA_DEBUG_KEYSTORE_B64 }}
+          KARBAMA_RELEASE_KEYSTORE_B64: ${{ secrets.KARBAMA_RELEASE_KEYSTORE_B64 }}
+          KARBAMA_RELEASE_STORE_PASSWORD: ${{ secrets.KARBAMA_RELEASE_STORE_PASSWORD }}
+          KARBAMA_RELEASE_KEY_ALIAS: ${{ secrets.KARBAMA_RELEASE_KEY_ALIAS }}
+          KARBAMA_RELEASE_KEY_PASSWORD: ${{ secrets.KARBAMA_RELEASE_KEY_PASSWORD }}
+          KARBAMA_RELEASE_CERT_SHA256: ${{ vars.KARBAMA_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          test -n "$KARBAMA_GOOGLE_SERVICES_JSON_B64" || { echo "Missing Firebase configuration secret."; exit 1; }
-          test -n "$KARBAMA_DEBUG_KEYSTORE_B64" || { echo "Missing Android signing-key secret."; exit 1; }
-
-          mkdir -p "$HOME/.android"
+          test -n "$KARBAMA_GOOGLE_SERVICES_JSON_B64" && test -n "$KARBAMA_RELEASE_KEYSTORE_B64" && test -n "$KARBAMA_RELEASE_STORE_PASSWORD" && test -n "$KARBAMA_RELEASE_KEY_ALIAS" && test -n "$KARBAMA_RELEASE_KEY_PASSWORD" && test -n "$KARBAMA_RELEASE_CERT_SHA256" || { echo "Missing release configuration."; exit 1; }
           printf '%s' "$KARBAMA_GOOGLE_SERVICES_JSON_B64" | base64 --decode > Karbama/app/google-services.json
-          printf '%s' "$KARBAMA_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
-          chmod 600 Karbama/app/google-services.json "$HOME/.android/debug.keystore"
+          printf '%s' "$KARBAMA_RELEASE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/karbama-release.jks"
+          actual="$(keytool -list -v -keystore "$RUNNER_TEMP/karbama-release.jks" -storepass "$KARBAMA_RELEASE_STORE_PASSWORD" -alias "$KARBAMA_RELEASE_KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/{gsub(":", "", $2); print tolower($2); exit}')"
+          expected="$(printf '%s' "$KARBAMA_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          test -n "$actual" && test "$actual" = "$expected" || { echo "Release keystore fingerprint mismatch."; exit 1; }
 
       - name: Confirm tag and Android version match
         run: |
@@ -77,20 +78,32 @@ jobs:
       - name: Test and build APK
         working-directory: Karbama
         env:
-          # Robolectric screenshot tests read this JVM property directly.
           JAVA_TOOL_OPTIONS: -Dkbshots.dir=${{ github.workspace }}/kb-tools/shots
+          KARBAMA_RELEASE_STORE_PASSWORD: ${{ secrets.KARBAMA_RELEASE_STORE_PASSWORD }}
+          KARBAMA_RELEASE_KEY_ALIAS: ${{ secrets.KARBAMA_RELEASE_KEY_ALIAS }}
+          KARBAMA_RELEASE_KEY_PASSWORD: ${{ secrets.KARBAMA_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           chmod +x gradlew
           mkdir -p "$GITHUB_WORKSPACE/kb-tools/shots"
-          ./gradlew --no-daemon -Pkbshots testDebugUnitTest assembleDebug
+          ./gradlew --no-daemon -Pkbshots testDebugUnitTest assembleRelease \
+            -Pkarbama.release.storeFile="$RUNNER_TEMP/karbama-release.jks" \
+            -Pkarbama.release.storePassword="$KARBAMA_RELEASE_STORE_PASSWORD" \
+            -Pkarbama.release.keyAlias="$KARBAMA_RELEASE_KEY_ALIAS" \
+            -Pkarbama.release.keyPassword="$KARBAMA_RELEASE_KEY_PASSWORD"
 
-      - name: Prepare verified release asset
+      - name: Prepare and verify permanent release asset
         id: asset
+        env:
+          KARBAMA_RELEASE_CERT_SHA256: ${{ vars.KARBAMA_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          APK="Karbama/app/build/outputs/apk/debug/app-debug.apk"
+          APK="Karbama/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK" || { echo "APK was not produced."; exit 1; }
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{gsub(":", "", $2); print tolower($2); exit}')"
+          expected="$(printf '%s' "$KARBAMA_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          test -n "$actual" && test "$actual" = "$expected" || { echo "Output APK signer mismatch."; exit 1; }
           mkdir -p release
           ASSET="release/Karbama-${RELEASE_TAG}.apk"
           cp "$APK" "$ASSET"

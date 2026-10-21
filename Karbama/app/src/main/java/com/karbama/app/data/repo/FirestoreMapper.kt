@@ -49,6 +49,8 @@ fun Hotel.toMap(): Map<String, Any> = mapOf(
     "address" to address,
     "lat" to lat,
     "lon" to lon,
+    "ownerUid" to ownerUid,
+    "active" to active,
     "updatedAt" to updatedAt
 )
 
@@ -88,7 +90,7 @@ fun DocumentSnapshot.toApplicant(): Applicant = Applicant(
     lastName = getString("lastName") ?: "",
     fatherName = getString("fatherName") ?: "",
     username = getString("username") ?: "",
-    passwordHash = getString("passwordHash") ?: "",
+    createdBy = getString("createdBy") ?: "",
     nationalId = getString("nationalId") ?: "",
     otherJobs = getString("otherJobs") ?: "",
     phone = getString("phone") ?: "",
@@ -146,7 +148,6 @@ fun Applicant.toMap(): Map<String, Any> = mapOf(
     "lastName" to lastName,
     "fatherName" to fatherName,
     "username" to username,
-    "passwordHash" to passwordHash,
     "nationalId" to nationalId,
     "otherJobs" to otherJobs,
     "phone" to phone,

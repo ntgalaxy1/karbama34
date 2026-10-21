@@ -151,8 +151,8 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                         brokerFee = vm.brokerFee,
                         brokerCard = vm.brokerCard,
                         brokerHolder = vm.brokerHolder,
-                        onSubmit = { applicant, idBytes, bodyBytes, undertaking ->
-                            vm.submitRegistration(applicant.copy(undertaking = undertaking), idBytes, bodyBytes) {
+                        onSubmit = { applicant, password, idBytes, bodyBytes, undertaking ->
+                            vm.submitRegistration(applicant.copy(undertaking = undertaking), password, idBytes, bodyBytes) {
                                 // صفحه‌ی «ثبت‌نام با موفقیت» حذف شده؛ مستقیم می‌رویم به آگهی‌ها
                                 vm.message = loc["successToast"]
                                 nav.navigate(Routes.MAIN) {
@@ -222,12 +222,11 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
 
                 // ---------- ورود به برنامه (کاربر و مدیر) ----------
                 composable(Routes.LOGIN) {
-                    val savedLogin = remember { vm.prefs.rememberedLogin() }
                     LoginScreen(
                         loc = loc,
                         busy = vm.busy,
-                        savedUsername = savedLogin?.username.orEmpty(),
-                        savedPassword = savedLogin?.password.orEmpty(),
+                        savedUsername = "",
+                        savedPassword = "",
                         onLogin = { user, pass, cb ->
                             vm.loginUser(user, pass) { outcome ->
                                 cb(outcome)
@@ -289,8 +288,7 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                 composable(Routes.APPLICANT) { entry ->
                     val id = entry.arguments?.getString("id") ?: ""
                     val live = vm.adminMode == AdminMode.LIVE
-                    val list by remember(id, live) { vm.applicantsFlow(live) }
-                        .collectAsState(initial = emptyList())
+                    val list by remember(id, live, vm.collaboratorUid) { if (vm.isCollaborator) vm.collaboratorApplicantsFlow() else vm.applicantsFlow(live) }.collectAsState(initial = emptyList())
                     val person = list.firstOrNull { it.id == id }
                     // #29: پسندیده‌ها و درخواست‌های همین متقاضی — زنده از سرور
                     val activity by remember(id) { vm.watchApplicantActivity(id) }
@@ -372,11 +370,12 @@ private fun MainShell(
 ) {
     var tab by remember { mutableIntStateOf(0) }
     val isAdmin = vm.adminMode != AdminMode.NONE
+    val isCollaborator = vm.isCollaborator
     // #34: تا هزینه‌ی نمایش آگهی‌ها پرداخت و توسط مدیر تأیید نشود، هیچ آگهی‌ای نمایش داده نمی‌شود
     val adsUnlocked = vm.adsUnlocked
 
-    val applicantsFlow = remember(vm.adminMode) {
-        vm.applicantsFlow(vm.adminMode == AdminMode.LIVE)
+    val applicantsFlow = remember(vm.adminMode, vm.collaboratorUid) {
+        if (vm.isCollaborator) vm.collaboratorApplicantsFlow() else vm.applicantsFlow(vm.adminMode == AdminMode.LIVE)
     }
     val applicants by applicantsFlow.collectAsState(initial = emptyList())
 
@@ -389,7 +388,7 @@ private fun MainShell(
         // مدیر که با یوزرنیم و پسورد خودش وارد می‌شود، پنل را تمام‌صفحه می‌بیند:
         // تب‌های پایین «آگهی‌ها» و «پروفایل من» نمایش داده نمی‌شوند.
         bottomBar = {
-            if (!isAdmin) {
+            if (!isAdmin && !isCollaborator) {
                 // نوار پایین شناور و مدرن
                 Surface(
                     color = GlassBar,
@@ -458,6 +457,15 @@ private fun MainShell(
                 .padding(padding)
         ) {
             when {
+                isCollaborator -> CollaboratorContent(
+                    loc = loc, busy = vm.busy, jobs = jobs.filter { it.createdBy == vm.collaboratorUid },
+                    hotels = hotels.filter { it.ownerUid == vm.collaboratorUid }, applicants = applicants,
+                    themeMode = vm.themeMode, onThemeChange = { vm.applyThemeMode(it) }, onNewJob = onNewJob,
+                    onEditJob = onEditJob, onDeleteJob = { vm.deleteJob(it.id) }, onOpenApplicant = onOpenApplicant,
+                    onSaveHotel = { vm.saveHotel(it) }, onDeleteHotel = { vm.deleteHotel(it) },
+                    onCreateApplicant = { u, p, f, l, n, ph -> vm.createApplicantForCollaborator(u, p, f, l, n, ph) },
+                    onExit = { vm.logout(); onLoggedOut() }
+                )
                 isAdmin -> AdminContent(
                     loc = loc,
                     mode = vm.adminMode,
@@ -496,7 +504,8 @@ private fun MainShell(
                         onLoggedOut()
                     },
                     adminEmail = vm.adminEmail,                                                  // v51
-                    onChangeAdminPassword = { p, cur, cb -> vm.changeAdminPassword(p, cur, cb) }   // v52
+                    onChangeAdminPassword = { p, cur, cb -> vm.changeAdminPassword(p, cur, cb) },
+                    onCreateCollaborator = { username, password -> vm.createCollaborator(username, password) }
                 )
 
                 // #35: صفحه‌ی اصلی همان صفحه‌ی قبلی است؛ فقط بخش آگهی‌ها

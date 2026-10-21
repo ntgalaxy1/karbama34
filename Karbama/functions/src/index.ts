@@ -10,6 +10,8 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 
+export { provisionCollaboratorIdentity, provisionApplicantIdentity, setCollaboratorActive } from "./identity";
+
 admin.initializeApp();
 const db = admin.firestore();
 

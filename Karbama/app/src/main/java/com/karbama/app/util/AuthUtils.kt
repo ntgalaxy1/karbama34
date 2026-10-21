@@ -1,23 +1,18 @@
 package com.karbama.app.util
 
-import java.security.MessageDigest
-
 /** ابزارهای ساده‌ی امنیتی و اعتبارسنجی ورود */
 object AuthUtils {
 
-    /** نام کاربری معتبر: حداقل ۳ حرف، بدون فاصله */
-    fun usernameIsValid(u: String): Boolean {
-        val t = u.trim()
-        return t.length >= 3 && !t.contains(" ") && t.none { it == '@' }
-    }
+    /** Firebase username mapping accepts English lowercase identifiers only. */
+    fun usernameIsValid(u: String): Boolean = Regex("^[a-z][a-z0-9._-]{2,31}$").matches(u.trim().lowercase())
 
     /** رمز عبور: حداقل ۴ کاراکتر */
     fun passwordIsValid(p: String): Boolean = p.length >= 4
 
     /** فقط حروف و اعداد انگلیسی + . _ - (بقیه حذف می‌شود) */
     fun sanitizeUsername(v: String): String =
-        v.filter { it.code in 33..126 && (it.isLetterOrDigit() || it == '.' || it == '_' || it == '-') }
-            .take(24)
+        v.lowercase().filter { it.code in 33..126 && (it.isLetterOrDigit() || it == '.' || it == '_' || it == '-') }
+            .take(32)
 
     /** هش SHA-256 — رمز خام هرگز ذخیره نمی‌شود */
     fun hash(password: String, salt: String = "karbama"): String {

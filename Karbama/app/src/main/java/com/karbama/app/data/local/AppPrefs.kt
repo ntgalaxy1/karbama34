@@ -17,13 +17,26 @@ class AppPrefs(context: Context) {
 
     private val sp = context.applicationContext
         .getSharedPreferences("karbama_prefs", Context.MODE_PRIVATE)
-    private val loginVault = SecureLoginVault(context.applicationContext)
 
     init {
         migratePaymentV38Default()
         // نسخه‌های قدیمی نام/رمز مدیر را در SharedPreferences داشتند.
         // مسیر مدیریت اکنون فقط Firebase Authentication است؛ داده‌های قدیمی پاک می‌شوند.
         sp.edit().remove(K_LEGACY_ADMIN_USER).remove(K_LEGACY_ADMIN_PASS).apply()
+    }
+
+    /** Removes legacy client-verifiable password hashes from private JSON caches. */
+    private fun purgeLegacyPasswordHashes() {
+        fun objectJson(raw: String?): String? = runCatching {
+            JSONObject(raw ?: return null).apply { remove("passwordHash") }.toString()
+        }.getOrNull()
+        fun arrayJson(raw: String?): String? = runCatching {
+            JSONArray(raw ?: return null).apply { for (i in 0 until length()) optJSONObject(i)?.remove("passwordHash") }.toString()
+        }.getOrNull()
+        val edit = sp.edit()
+        objectJson(sp.getString(K_MY_PROFILE, null))?.let { edit.putString(K_MY_PROFILE, it) }
+        arrayJson(sp.getString(K_LOCAL_APPLICANTS, null))?.let { edit.putString(K_LOCAL_APPLICANTS, it) }
+        edit.apply()
     }
 
     /**
@@ -100,12 +113,8 @@ class AppPrefs(context: Context) {
 
     fun clearMyProfile() = sp.edit().remove(K_MY_PROFILE).remove(K_MY_ID).apply()
 
-    /** Saved only after successful sign-in; encrypted with an Android Keystore key. */
-    fun saveRememberedLogin(username: String, password: String) = loginVault.save(username, password)
-
-    fun rememberedLogin(): SavedLogin? = loginVault.read()
-
-    fun clearRememberedLogin() = loginVault.clear()
+    /** Password persistence was removed; Firebase owns credentials and refresh tokens. */
+    fun clearRememberedLogin() = Unit
 
     fun myProfile(): Applicant? {
         val raw = sp.getString(K_MY_PROFILE, null) ?: return null
@@ -175,7 +184,6 @@ class AppPrefs(context: Context) {
     }
 
     fun clearAll() {
-        loginVault.clear()
         sp.edit().clear().apply()
     }
 
@@ -267,7 +275,6 @@ fun Applicant.toJson(): JSONObject = JSONObject().apply {
     put("lastName", lastName)
     put("fatherName", fatherName)
     put("username", username)
-    put("passwordHash", passwordHash)
     put("nationalId", nationalId)
     put("otherJobs", otherJobs)
     put("phone", phone)
@@ -325,7 +332,7 @@ fun jsonToApplicant(o: JSONObject): Applicant = Applicant(
     lastName = o.optString("lastName"),
     fatherName = o.optString("fatherName"),
     username = o.optString("username"),
-    passwordHash = o.optString("passwordHash"),
+    createdBy = o.optString("createdBy"),
     nationalId = o.optString("nationalId"),
     otherJobs = o.optString("otherJobs"),
     phone = o.optString("phone"),

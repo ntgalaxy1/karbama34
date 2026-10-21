@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 
 /**
  * تنها ViewModel برنامه — نگه‌دارنده‌ی وضعیت مشترک بین صفحه‌ها.
@@ -125,6 +126,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { if (isRegistered) syncUserActivity() }
     }
 
+    private suspend fun restoreSignedInSession() {
+        if (!Service.ready) return
+        val user = Service.auth?.currentUser ?: return
+        if (AdminGate.isAdminAccount()) { adminMode = AdminMode.LIVE; prefs.adminMode = AdminMode.LIVE; return }
+        if (runCatching { user.getIdToken(true).await().claims["karbamaRole"] as? String }.getOrNull() == "collaborator") {
+            collaboratorUid = user.uid; myProfile = null; prefs.clearMyProfile(); prefs.registered = true; return
+        }
+        refreshProfile()
+    }
+
     private suspend fun refreshProfile() {
         if (!Service.ready) return
         val uid = Service.currentUid ?: return
@@ -151,15 +162,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- ثبت‌نام ----------
 
     fun submitRegistration(
-        applicant: Applicant,
-        idCardBytes: ByteArray?,
-        bodyPhotoBytes: ByteArray?,
-        onDone: (Applicant) -> Unit
+        applicant: Applicant, password: String, idCardBytes: ByteArray?, bodyPhotoBytes: ByteArray?, onDone: (Applicant) -> Unit
     ) {
         viewModelScope.launch {
             busy = true
             val result = withContext(Dispatchers.IO) {
-                applicantRepo.submit(applicant, idCardBytes, bodyPhotoBytes)
+                runCatching {
+                    if (Service.ready) identityRepo.createApplicant(applicant.username, password)
+                    applicantRepo.submit(applicant, idCardBytes, bodyPhotoBytes).getOrThrow()
+                }
             }
             busy = false
             result.onSuccess { saved ->
@@ -210,6 +221,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         myProfile = null
         prefs.clearMyProfile()
         prefs.registered = false
+        collaboratorUid = null
+        identityRepo.signOut()
         adminMode = AdminMode.NONE
         prefs.adminMode = AdminMode.NONE
         // The encrypted remembered username/password intentionally stays on this device.
@@ -254,14 +267,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             busy = true
-            val email = AdminGate.currentEmail()
-            val saved = prefs.rememberedLogin()
-            val remembered = saved?.takeIf { email.isNotEmpty() && it.username.equals(email, ignoreCase = true) }
-            val r = AdminGate.changePassword(newPass, remembered?.password, currentPass)
+            val r = AdminGate.changePassword(newPass, rememberedPassword = null, currentPassword = currentPass)
             busy = false
             when (r) {
                 AdminGate.PwResult.OK -> {
-                    if (remembered != null) prefs.saveRememberedLogin(remembered.username, newPass)
                     message = "✅ " + l["adm_pass_changed"]
                     onDone("ok")
                 }
@@ -523,7 +532,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 busy = true
                 when (AdminGate.signIn(u, pass)) {
                     AdminGate.LoginResult.SUCCESS -> {
-                        prefs.saveRememberedLogin(u, pass)
                         myProfile = null
                         prefs.clearMyProfile()
                         prefs.registered = false
@@ -553,43 +561,47 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        // کاربر عادی
-        if (Service.ready) {
-            viewModelScope.launch {
-                busy = true
-                val remote = runCatching { applicantRepo.findByUsername(u) }.getOrNull()
-                busy = false
-                if (remote != null && remote.passwordHash.isNotEmpty() &&
-                    remote.passwordHash == AuthUtils.hash(pass)
-                ) {
-                    openSession(remote, u, pass)
-                    onResult(LoginOutcome.USER)
-                } else {
-                    onResult(LoginOutcome.FAIL)
-                }
+        if (!Service.ready) { onResult(LoginOutcome.FAIL); return }
+        viewModelScope.launch {
+            busy = true
+            val signed = runCatching { withContext(Dispatchers.IO) { identityRepo.signIn(u, pass) } }.getOrNull()
+            if (signed == null) { busy = false; onResult(LoginOutcome.FAIL); return@launch }
+            if (signed.role == IdentityRepository.Role.COLLABORATOR) {
+                collaboratorUid = signed.user.uid; myProfile = null; prefs.clearMyProfile(); prefs.registered = true; adminMode = AdminMode.NONE; prefs.adminMode = AdminMode.NONE
+                busy = false; onResult(LoginOutcome.USER); return@launch
             }
-        } else {
-            val local = LocalStore.findByUsername(u)
-            if (local != null && local.passwordHash.isNotEmpty() &&
-                local.passwordHash == AuthUtils.hash(pass)
-            ) {
-                openSession(local, u, pass)
-                onResult(LoginOutcome.USER)
-            } else {
-                onResult(LoginOutcome.FAIL)
-            }
+            val profile = withContext(Dispatchers.IO) { applicantRepo.myProfile(signed.user.uid) }
+            busy = false
+            if (profile != null) { openApplicantSession(profile); onResult(LoginOutcome.USER) }
+            else { identityRepo.signOut(); onResult(LoginOutcome.FAIL) }
         }
     }
 
-    /** باز کردن قسمت شخصی کاربر */
-    private fun openSession(a: Applicant, username: String, password: String) {
-        prefs.saveRememberedLogin(username, password)
-        myProfile = a
-        prefs.saveMyProfile(a)
-        prefs.registered = true
-        adminMode = AdminMode.NONE
-        prefs.adminMode = AdminMode.NONE
-            syncUserActivity()
+    private fun openApplicantSession(a: Applicant) {
+        myProfile = a; prefs.saveMyProfile(a); prefs.registered = true; collaboratorUid = null; adminMode = AdminMode.NONE; prefs.adminMode = AdminMode.NONE; syncUserActivity()
+    }
+
+    fun createCollaborator(username: String, password: String) {
+        viewModelScope.launch {
+            busy = true
+            val result = runCatching { withContext(Dispatchers.IO) { identityRepo.createCollaborator(username, password) } }
+            busy = false
+            message = if (result.isSuccess) "✅ همکار «${result.getOrThrow().username}» ساخته شد." else "⚠️ " + friendlyError(result.exceptionOrNull() ?: Exception(), "err_register_failed")
+        }
+    }
+
+    fun collaboratorApplicantsFlow(): Flow<List<Applicant>> = collaboratorUid?.let { applicantRepo.observeApplicantsCreatedBy(it) } ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    fun createApplicantForCollaborator(username: String, password: String, firstName: String, lastName: String, nationalId: String, phone: String) {
+        viewModelScope.launch {
+            busy = true
+            val result = withContext(Dispatchers.IO) { runCatching {
+                val identity = identityRepo.createApplicantForCollaborator(username, password)
+                applicantRepo.submitForCollaborator(Applicant(firstName = firstName.trim(), lastName = lastName.trim(), username = identity.username, nationalId = nationalId.filter { it.isDigit() }, phone = phone.trim(), status = "new", consent = true, lang = lang), identity.uid).getOrThrow()
+            } }
+            busy = false
+            message = if (result.isSuccess) "✅ حساب و پروندهٔ کارجو ساخته شد." else "⚠️ " + friendlyError(result.exceptionOrNull() ?: Exception(), "err_register_failed")
+        }
     }
 
     fun adminAccountLogin(email: String, password: String, onResult: (Boolean, Boolean) -> Unit) {

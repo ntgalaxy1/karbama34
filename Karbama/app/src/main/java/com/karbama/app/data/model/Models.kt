@@ -42,14 +42,9 @@ object MediaType {
  * cityId همان شناسهٔ شهر در دادهٔ مسیر ترکیه (مثلاً istanbul) است.
  */
 data class Hotel(
-    val id: String = "",
-    val countryCode: String = "TR",
-    val cityId: String = "",
-    val name: String = "",
-    val address: String = "",
-    val lat: Double = 0.0,
-    val lon: Double = 0.0,
-    val updatedAt: Long = 0L
+    val id: String = "", val countryCode: String = "TR", val cityId: String = "", val name: String = "", val address: String = "", val lat: Double = 0.0, val lon: Double = 0.0,
+    /** Immutable Firestore ownership stamp for collaborator-scoped hotel management. */
+    val ownerUid: String = "", val active: Boolean = true, val updatedAt: Long = 0L
 )
 
 /** متقاضی کار */
@@ -59,8 +54,8 @@ data class Applicant(
     val firstName: String = "",
     val lastName: String = "",
     val fatherName: String = "",     // نام پدر (برای متن تعهدنامه)
-    val username: String = "",       // نام کاربری ورود
-    val passwordHash: String = "",   // هش رمز عبور (SHA-256)
+    val username: String = "",       // نام کاربری ورود (فقط metadata، بدون ایمیل)
+    val createdBy: String = "",       // UID همکار سازنده؛ برای ثبت‌نام شخصی خالی است
     val nationalId: String = "",     // کد ملی (در مرحله‌ی ۱ ثبت‌نام گرفته می‌شود)
     val otherJobs: String = "",      // حرفه‌های دیگر (متن آزاد)
     val phone: String = "",

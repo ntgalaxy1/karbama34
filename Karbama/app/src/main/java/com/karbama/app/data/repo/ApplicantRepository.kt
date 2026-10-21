@@ -117,6 +117,33 @@ class ApplicantRepository {
         }
     }
 
+    fun observeApplicantsCreatedBy(collaboratorUid: String): Flow<List<Applicant>> {
+        val db = Service.db ?: return LocalStore.applicants
+        return callbackFlow {
+            val registration = db.collection(Config.COL_APPLICANTS).whereEqualTo("createdBy", collaboratorUid)
+                .orderBy("createdAt", Query.Direction.DESCENDING).limit(500)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) trySend(emptyList())
+                    else trySend(snapshot?.documents?.map { it.toApplicant() } ?: emptyList())
+                }
+            awaitClose { registration.remove() }
+        }
+    }
+
+    suspend fun submitForCollaborator(applicant: Applicant, provisionedUid: String): Result<Applicant> {
+        val db = Service.db ?: return Result.failure(IllegalStateException("Firebase is required."))
+        val collaboratorUid = Service.currentUid ?: return Result.failure(IllegalStateException("Collaborator sign-in is required."))
+        return runCatching {
+            val (nidTaken, phoneTaken) = checkUnique(applicant.nationalId, applicant.phone)
+            if (nidTaken) throw DuplicateException("nid")
+            if (phoneTaken) throw DuplicateException("phone")
+            val saved = applicant.copy(id = provisionedUid, uid = provisionedUid, createdBy = collaboratorUid, createdAt = System.currentTimeMillis())
+            db.collection(Config.COL_APPLICANTS).document(provisionedUid).set(saved.toMap() - "paymentAt").await()
+            claimKeys(saved, provisionedUid)
+            saved
+        }
+    }
+
     /** تغییر وضعیت متقاضی: new / reviewed / referred */
     suspend fun setStatus(id: String, status: String): Result<Unit> {
         val db = Service.db
@@ -317,10 +344,10 @@ class ApplicantRepository {
     }
 
     /** ثبت کلیدهای کد ملی/تلفن برای این متقاضی (فقط اگر هنوز نیست) */
-    suspend fun claimKeys(applicant: Applicant) {
+    suspend fun claimKeys(applicant: Applicant, ownerUid: String = applicant.id) {
         val db = Service.db ?: return
-        val uid = Service.currentUid ?: return
-        if (uid != applicant.id) return
+        val actorUid = Service.currentUid ?: return
+        if (actorUid != ownerUid && applicant.createdBy != actorUid) return
         listOf("nid" to nidKey(applicant.nationalId), "phone" to phoneKey(applicant.phone)).forEach { (kind, key) ->
             if (key == null) return@forEach
             runCatching {
@@ -328,7 +355,7 @@ class ApplicantRepository {
                 if (!ref.get().await().exists()) {
                     ref.set(
                         mapOf(
-                            "owner" to uid,
+                            "owner" to ownerUid,
                             "kind" to kind,
                             "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                         )

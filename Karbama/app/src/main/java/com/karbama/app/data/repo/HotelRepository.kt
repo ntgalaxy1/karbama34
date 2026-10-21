@@ -42,6 +42,8 @@ class HotelRepository {
             cityId = hotel.cityId.trim().lowercase(),
             name = hotel.name.trim(),
             address = hotel.address.trim(),
+            ownerUid = hotel.ownerUid.ifBlank { Service.currentUid.orEmpty() },
+            active = hotel.active,
             updatedAt = System.currentTimeMillis()
         )
         if (clean.name.isBlank() || clean.cityId.isBlank() ||

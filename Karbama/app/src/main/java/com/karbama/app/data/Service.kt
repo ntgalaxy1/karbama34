@@ -3,6 +3,7 @@ package com.karbama.app.data
 import android.app.Application
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
 
 /**
@@ -32,6 +33,7 @@ object Service {
         resolved = true
         _auth = runCatching { FirebaseAuth.getInstance() }.getOrNull()
         _db = runCatching { FirebaseFirestore.getInstance() }.getOrNull()
+        _functions = runCatching { FirebaseFunctions.getInstance("europe-west1") }.getOrNull()
         _storage = runCatching { FirebaseStorage.getInstance() }.getOrNull()
     }
 
@@ -40,6 +42,9 @@ object Service {
 
     val db: FirebaseFirestore?
         get() { resolve(); return _db }
+
+    val functions: FirebaseFunctions?
+        get() { resolve(); return _functions }
 
     val storage: FirebaseStorage?
         get() { resolve(); return _storage }
