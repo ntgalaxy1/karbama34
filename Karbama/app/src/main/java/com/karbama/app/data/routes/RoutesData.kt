@@ -38,19 +38,25 @@ data class RouteCountry(
     val cities: List<RouteCity>
 )
 
-/** کشورهای مقصدی که کارجو می‌تواند انتخاب کند. فعلاً فقط ترکیه (به خواست کاربر). */
+/** کشورهای مقصدی که کارجو می‌تواند انتخاب کند.
+ * دادهٔ مسیریابی آفلاین در این انتشار فقط برای ترکیه بسته‌بندی شده است؛ مقصدهای دیگر
+ * برای فرم/پروفایل ذخیره می‌شوند تا دادهٔ مستقلشان در انتشار بعدی افزوده شود.
+ */
 object Destinations {
-    data class Dest(val code: String, val flag: String, val asset: String)
+    data class Dest(val code: String, val flag: String, val asset: String?, val nameKey: String)
 
     val all: List<Dest> = listOf(
-        Dest("TR", "🇹🇷", "routes/tr.json")
+        Dest("TR", "🇹🇷", "routes/tr.json", "route_country_tr"),
+        Dest("AM", "🇦🇲", null, "route_country_am"),
+        Dest("IQ", "🇮🇶", null, "route_country_iq"),
+        Dest("DE", "🇩🇪", null, "route_country_de")
     )
 
     const val DEFAULT = "TR"
 
     fun of(code: String): Dest = all.firstOrNull { it.code == code } ?: all.first()
 
-    /** پروفایل‌های قدیمی که هنوز مقصد ندارند → ترکیه (تنها مقصد فعلی) */
+    /** پروفایل‌های قدیمی که هنوز مقصد ندارند → ترکیه */
     fun normalize(code: String?): String = if (code.isNullOrBlank() || all.none { it.code == code }) DEFAULT else code
 }
 
@@ -59,9 +65,10 @@ object RoutesRepo {
 
     fun load(context: Context, countryCode: String): RouteCountry? {
         val dest = Destinations.of(countryCode)
+        val asset = dest.asset ?: return null
         cache[dest.code]?.let { return it }
         return runCatching {
-            val text = context.assets.open(dest.asset).bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val text = context.assets.open(asset).bufferedReader(Charsets.UTF_8).use { it.readText() }
             parse(text).also { cache[dest.code] = it }
         }.getOrNull()
     }

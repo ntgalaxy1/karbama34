@@ -43,6 +43,11 @@ class AppPrefs(context: Context) {
         get() = sp.getString(K_LANG, null)
         set(v) = sp.edit().putString(K_LANG, v).apply()
 
+    /** system (پیش‌فرض) | light | dark — انتخاب رنگ هر کاربر روی همین گوشی */
+    var themeMode: String
+        get() = sp.getString(K_THEME_MODE, "system") ?: "system"
+        set(v) = sp.edit().putString(K_THEME_MODE, v).apply()
+
     var registered: Boolean
         get() = sp.getBoolean(K_REGISTERED, false)
         set(v) = sp.edit().putBoolean(K_REGISTERED, v).apply()
@@ -176,6 +181,7 @@ class AppPrefs(context: Context) {
 
     private companion object {
         const val K_LANG = "lang"
+        const val K_THEME_MODE = "theme_mode"
         const val K_REGISTERED = "registered"
         const val K_ADMIN_MODE = "admin_mode"
         const val K_MY_ID = "my_applicant_id"

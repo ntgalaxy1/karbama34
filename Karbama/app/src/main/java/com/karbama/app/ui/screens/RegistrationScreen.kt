@@ -440,14 +440,14 @@ fun RegistrationScreen(
                         Spacer(Modifier.height(12.dp))
                         PickerField(
                             label = loc["destination_country"],
-                            value = Destinations.all.firstOrNull { it.code == destinationCountry }?.let { it.flag + " " + loc["route_country_tr"] }.orEmpty(),
+                            value = Destinations.all.firstOrNull { it.code == destinationCountry }?.let { it.flag + " " + loc[it.nameKey] }.orEmpty(),
                             placeholder = loc["select"],
                             required = true,
-                            options = Destinations.all.map { it.code to (it.flag + " " + loc["route_country_tr"]) },
+                            options = Destinations.all.map { it.code to (it.flag + " " + loc[it.nameKey]) },
                             onSelect = { destinationCountry = it }
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text(loc["destination_tr_hint"], style = MaterialTheme.typography.bodySmall, color = Ink3)
+                        Text(loc["destination_route_hint"], style = MaterialTheme.typography.bodySmall, color = Ink3)
                     }
                     Spacer(Modifier.height(12.dp))
                     InfoNote(

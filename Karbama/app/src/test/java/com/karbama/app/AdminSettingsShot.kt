@@ -8,8 +8,13 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.LayoutDirection
 import com.karbama.app.data.sample.Catalog
+import com.karbama.app.data.model.Hotel
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.i18n.LocalLoc
 import com.karbama.app.ui.screens.AdminContent
@@ -66,4 +71,35 @@ class AdminSettingsShot {
     @Test fun settings() = shot("android-settings", twoFA = false)
     @Test fun settingsPending() = shot("android-settings-pending", twoFA = false, pending = true)
     @Test fun settingsOn() = shot("android-settings-on", twoFA = true)
+
+    @Test fun settingsShowsHotelManager() {
+        val loc = Loc("fa")
+        rule.setContent {
+            CompositionLocalProvider(LocalLoc provides loc, LocalLayoutDirection provides LayoutDirection.Rtl) {
+                KarbamaTheme {
+                    AdminContent(
+                        loc = loc, mode = "live", jobs = Catalog.sampleJobs(), applicants = Catalog.sampleApplicants(),
+                        hotels = listOf(Hotel(id = "hotel-1", cityId = "istanbul", name = "هتل آزمون", address = "Beyoğlu", lat = 41.03, lon = 28.97)),
+                        onNewJob = {}, onEditJob = {}, onDeleteJob = {}, onOpenApplicant = {},
+                        brokerCard = "1234123412341234", brokerHolder = "", onSaveSettings = {},
+                        twoFAEnabled = false, twoFAPending = false, twoFASecret = "", twoFARecovery = "", twoFAUri = "",
+                        onBegin2FA = {}, onConfirm2FA = { false }, onDisable2FA = {},
+                        onSetStatus = { _, _ -> }, onSetFee = { _, _ -> }, adsFee = 500L,
+                        onSaveHotel = {}, onDeleteHotel = {}, onExit = {}, initialTab = 2
+                    )
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("مدیریت هتل‌های مسیریابی").performScrollTo()
+        rule.onAllNodesWithText("مدیریت هتل‌های مسیریابی").assertCountEquals(1)
+        rule.onAllNodesWithText("هتل آزمون").assertCountEquals(1)
+        rule.onAllNodesWithText("افزودن هتل", substring = true).assertCountEquals(1)
+        val root = rule.activity.window.decorView
+        val bmp = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        rule.runOnUiThread { root.draw(android.graphics.Canvas(bmp)) }
+        val out = File(System.getProperty("kbshots.dir", "/home/user/kb-tools/shots"), "android-settings-hotels.png")
+        out.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        println("SHOT $out ${bmp.width}x${bmp.height}; hotel manager controls OK")
+    }
 }

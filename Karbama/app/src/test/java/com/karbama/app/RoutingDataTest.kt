@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.routes.Destinations
 import com.karbama.app.data.routes.RoutesRepo
+import com.karbama.app.data.routes.TurkeyHospitals
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.i18n.LocalLoc
 import com.karbama.app.ui.screens.RouteContent
@@ -55,13 +56,29 @@ class RoutingDataTest {
         println("ROUTES data: cities=${tr.cities.size}, airports=${tr.cities.sumOf { it.airports.size }}, lines=${tr.cities.sumOf { it.lines.size }}, stations=${tr.cities.sumOf { c -> c.lines.sumOf { it.stations.size } }} OK")
     }
 
-    @Test fun onlyCurrentDestinationAndOldProfilesNormalizeToTurkey() {
+    @Test fun destinationChoicesRetainTurkeyOnlyOfflineRouting() {
         assertEquals("TR", Destinations.normalize(null))
         assertEquals("TR", Destinations.normalize(""))
-        assertEquals("TR", Destinations.normalize("DE"))
         assertEquals("TR", Destinations.normalize("TR"))
-        assertEquals(1, Destinations.all.size)
-        println("ROUTES destination selection: current list is TR only; legacy blank profile → TR OK")
+        assertEquals("AM", Destinations.normalize("AM"))
+        assertEquals("IQ", Destinations.normalize("IQ"))
+        assertEquals("DE", Destinations.normalize("DE"))
+        assertEquals(listOf("TR", "AM", "IQ", "DE"), Destinations.all.map { it.code })
+        assertEquals("routes/tr.json", Destinations.of("TR").asset)
+        assertEquals(null, Destinations.of("AM").asset)
+        assertEquals(null, Destinations.of("IQ").asset)
+        assertEquals(null, Destinations.of("DE").asset)
+        assertEquals(null, RoutesRepo.load(RuntimeEnvironment.getApplication(), "DE"))
+        println("ROUTES destinations: TR/AM/IQ/DE selectable; offline asset remains TR only OK")
+    }
+
+    @Test fun bundledHospitalsHaveNamedMappablePlacesForEveryTurkeyCity() {
+        val tr = RoutesRepo.load(RuntimeEnvironment.getApplication(), "TR")!!
+        val places = tr.cities.flatMap { city -> TurkeyHospitals.forCity(city.id) }
+        assertEquals(tr.cities.size, tr.cities.count { TurkeyHospitals.forCity(it.id).isNotEmpty() })
+        assertTrue(places.size >= 250)
+        assertTrue(places.all { it.name.isNotBlank() && it.lat in -90.0..90.0 && it.lon in -180.0..180.0 })
+        println("ROUTES hospitals: cities=${tr.cities.size}, places=${places.size} bundled from OSM OK")
     }
 
     @Test fun routeTabRendersIstanbulAndExpandsAnAirportMetroLine() {
@@ -74,6 +91,9 @@ class RoutingDataTest {
         rule.waitForIdle()
         rule.onAllNodesWithText("مسیریابی", substring = true).assertCountEquals(1)
         rule.onAllNodesWithText("فرودگاه‌ها").assertCountEquals(1)
+        rule.onAllNodesWithText("بیمارستان‌ها").assertCountEquals(1)
+        rule.onAllNodesWithText("هتل‌ها").assertCountEquals(1)
+        rule.onAllNodesWithText("هتلی برای این شهر ثبت نشده است.", substring = true).assertCountEquals(1)
         rule.onNodeWithText("Kadıköy – Sabiha Gökçen Havalimanı").performClick()
         rule.waitForIdle()
         rule.onAllNodesWithText("Sabiha Gökçen Havalimanı").assertCountEquals(1)

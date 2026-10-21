@@ -150,6 +150,8 @@ fun WelcomeScreen(
     loc: Loc,
     jobsCount: Int,
     peopleCount: Int,
+    themeMode: String,
+    onThemeChange: (String) -> Unit,
     onStart: () -> Unit,
     onLogin: () -> Unit,
     onLanguage: () -> Unit
@@ -235,10 +237,12 @@ fun WelcomeScreen(
             Spacer(Modifier.height(14.dp))
             PrimaryButton(text = "🚀 " + loc["start_btn"], onClick = onStart)
             Spacer(Modifier.height(10.dp))
-            GhostButton(
+            EmphasisButton(
                 text = "🔑 " + loc["login_title"],
                 onClick = onLogin
             )
+            Spacer(Modifier.height(16.dp))
+            ThemeModePicker(loc = loc, mode = themeMode, onChange = onThemeChange)
             Spacer(Modifier.height(14.dp))
             Row(
                 Modifier

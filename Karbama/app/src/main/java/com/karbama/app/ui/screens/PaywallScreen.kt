@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.ui.components.GhostButton
 import com.karbama.app.ui.components.PrimaryButton
+import com.karbama.app.ui.components.EmphasisButton
 import com.karbama.app.ui.components.SectionCard
 import com.karbama.app.ui.components.SystemBars
 import com.karbama.app.ui.components.TopBar
@@ -92,7 +93,7 @@ fun AdsLockPanel(
             )
         }
         Spacer(Modifier.height(16.dp))
-        PrimaryButton(text = loc["pay_my"], onClick = onGoPay)
+        EmphasisButton(text = "💳 " + loc["pay_my"], tone = com.karbama.app.ui.theme.Accent, fill = AccentLight, onClick = onGoPay)
     }
 }
 
@@ -333,7 +334,7 @@ private fun PaymentReceipt(
         }
         PaySteps(loc = loc, paid = paid)
         if (paid) {
-            PrimaryButton(text = loc["pay_open"], onClick = onDone)
+            EmphasisButton(text = "🔎 " + loc["pay_open"], onClick = onDone)
         } else {
             GhostButton(text = loc["pay_recheck"], onClick = onRecheck)
         }
@@ -435,8 +436,10 @@ fun PayStatusCard(
                 color = Ink2
             )
             Spacer(Modifier.height(10.dp))
-            PrimaryButton(
-                text = if (pending) loc["pay_view_status"] else loc["pay_my"],
+            EmphasisButton(
+                text = "💳 " + if (pending) loc["pay_view_status"] else loc["pay_my"],
+                tone = com.karbama.app.ui.theme.Accent,
+                fill = AccentLight,
                 onClick = onGoPay
             )
         }
@@ -448,5 +451,5 @@ fun PayStatusCard(
 fun LikesLockedNote(loc: Loc, onGoPay: () -> Unit) {
     Text(loc["pay_locked_likes"], style = MaterialTheme.typography.bodySmall, color = Ink3)
     Spacer(Modifier.height(10.dp))
-    GhostButton(text = loc["pay_my"], onClick = onGoPay)
+    EmphasisButton(text = "💳 " + loc["pay_my"], tone = com.karbama.app.ui.theme.Accent, fill = AccentLight, onClick = onGoPay)
 }

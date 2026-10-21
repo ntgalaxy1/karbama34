@@ -12,11 +12,13 @@ import com.karbama.app.data.local.LocalStore
 import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
+import com.karbama.app.data.model.Hotel
 import com.karbama.app.data.model.JobFilter
 import com.karbama.app.data.repo.AdminGate
 import com.karbama.app.data.repo.ApplicantRepository
 import com.karbama.app.data.repo.JobMediaStore
 import com.karbama.app.data.repo.JobRepository
+import com.karbama.app.data.repo.HotelRepository
 import com.karbama.app.data.repo.UserActivityRepository
 import com.karbama.app.data.repo.ActivityItem
 import com.karbama.app.data.Config
@@ -42,6 +44,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val prefs = AppPrefs(app)
 
     private val jobRepo = JobRepository()
+    private val hotelRepo = HotelRepository()
     private val applicantRepo = ApplicantRepository()
     private val activityRepo = UserActivityRepository()
 
@@ -56,8 +59,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.lang = code
     }
 
+    // ---------- حالت نمایش (روز / شب / هماهنگ با گوشی) ----------
+    var themeMode by mutableStateOf(prefs.themeMode)
+        private set
+
+    fun applyThemeMode(mode: String) {
+        val safe = if (mode in com.karbama.app.ui.theme.ThemeMode.all) mode
+        else com.karbama.app.ui.theme.ThemeMode.SYSTEM
+        themeMode = safe
+        prefs.themeMode = safe
+    }
+
+    fun resolvesDarkTheme(systemDark: Boolean): Boolean = when (themeMode) {
+        com.karbama.app.ui.theme.ThemeMode.DARK -> true
+        com.karbama.app.ui.theme.ThemeMode.LIGHT -> false
+        else -> systemDark
+    }
+
     // ---------- داده‌ها ----------
     val jobs = jobRepo.observeJobs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** فهرست زندهٔ هتل‌های اضافه‌شده توسط مدیر برای تب مسیریابی. */
+    val hotels = hotelRepo.observeHotels()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun applicantsFlow(live: Boolean): Flow<List<Applicant>> =
@@ -603,6 +627,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteJob(id: String) {
         viewModelScope.launch { jobRepo.deleteJob(id) }
+    }
+
+    fun saveHotel(hotel: Hotel) {
+        viewModelScope.launch {
+            busy = true
+            val result = hotelRepo.save(hotel)
+            busy = false
+            message = if (result.isSuccess) "✅ " + hotel.name
+            else "⚠️ " + friendlyError(result.exceptionOrNull() ?: IllegalStateException(), "err_register_failed")
+        }
+    }
+
+    fun deleteHotel(hotel: Hotel) {
+        viewModelScope.launch {
+            val result = hotelRepo.delete(hotel.id)
+            message = if (result.isSuccess) "🗑 " + hotel.name
+            else "⚠️ " + friendlyError(result.exceptionOrNull() ?: IllegalStateException(), "err_register_failed")
+        }
     }
 
     fun setApplicantStatus(id: String, status: String) {

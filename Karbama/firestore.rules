@@ -203,6 +203,39 @@ service cloud.firestore {
         && (request.auth.uid == uid || isAdmin());
     }
 
+    // Hotels shown in the routing tab. Any authenticated user may read the
+    // manager-curated list; only an account listed in admins/{uid} may alter it.
+    match /hotels/{hotelId} {
+      function validHotel() {
+        return request.resource.data.keys().hasOnly([
+            "countryCode", "cityId", "name", "address", "lat", "lon", "updatedAt"
+          ])
+          && request.resource.data.keys().hasAll([
+            "countryCode", "cityId", "name", "address", "lat", "lon", "updatedAt"
+          ])
+          && request.resource.data.countryCode == "TR"
+          && request.resource.data.cityId is string
+          && request.resource.data.cityId.size() >= 2
+          && request.resource.data.cityId.size() <= 80
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 160
+          && request.resource.data.address is string
+          && request.resource.data.address.size() <= 500
+          && request.resource.data.lat is number
+          && request.resource.data.lat >= -90
+          && request.resource.data.lat <= 90
+          && request.resource.data.lon is number
+          && request.resource.data.lon >= -180
+          && request.resource.data.lon <= 180
+          && request.resource.data.updatedAt is int;
+      }
+
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() && validHotel();
+      allow delete: if isAdmin();
+    }
+
     // Duplicate registration prevention
     // Key format: nid_<sha256> or ph_<sha256>
     // Fields: owner, kind, createdAt

@@ -214,9 +214,12 @@ fun SystemBars(darkIcons: Boolean) {
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
+            // در حالت شب همیشه آیکن روشن می‌خواهیم، حتی اگر صفحه در حالت روز قبلاً
+            // darkIcons=true فرستاده باشد.
+            val useDarkIcons = if (isKarbamaDarkTheme) false else darkIcons
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = darkIcons
-                isAppearanceLightNavigationBars = darkIcons
+                isAppearanceLightStatusBars = useDarkIcons
+                isAppearanceLightNavigationBars = useDarkIcons
             }
         }
     }
@@ -269,6 +272,32 @@ fun PrimaryButton(
     }
 }
 
+/** دکمهٔ دومِ پررنگ برای اقدام‌های مهمی مانند ورود یا رفتن به آگهی‌ها. */
+@Composable
+fun EmphasisButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tone: Color = Blue,
+    fill: Color = BlueLight
+) {
+    val shape = MaterialTheme.shapes.medium
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp)
+            .shadow(7.dp, shape)
+            .clip(shape)
+            .background(fill)
+            .border(1.5.dp, tone.copy(alpha = .72f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = tone, textAlign = TextAlign.Center)
+    }
+}
+
 @Composable
 fun GhostButton(
     text: String,
@@ -307,16 +336,61 @@ fun DangerButton(
         modifier = modifier.heightIn(min = 44.dp),
         shape = MaterialTheme.shapes.small,
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = DangerLight,
-            contentColor = Danger
+            containerColor = Danger,
+            contentColor = Color.White
         ),
-        border = androidx.compose.foundation.BorderStroke(1.2.dp, Danger.copy(alpha = 0.35f))
+        border = androidx.compose.foundation.BorderStroke(1.4.dp, Danger.copy(alpha = 0.92f))
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
         }
         Text(text, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+// ==================== حالت روز و شب ====================
+
+/** انتخاب قابل‌دسترس و ذخیره‌شوندهٔ رنگ برنامه؛ در صفحهٔ ورود و تنظیمات استفاده می‌شود. */
+@Composable
+fun ThemeModePicker(
+    loc: Loc,
+    mode: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier.fillMaxWidth()) {
+        Text("🌓 " + loc["theme_title"], style = MaterialTheme.typography.labelMedium, color = Ink2)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(
+                ThemeMode.SYSTEM to ("📱 " + loc["theme_system"]),
+                ThemeMode.LIGHT to ("☀️ " + loc["theme_light"]),
+                ThemeMode.DARK to ("🌙 " + loc["theme_dark"])
+            ).forEach { (value, label) ->
+                val selected = mode == value
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = 42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) Brand else FieldBg)
+                        .border(1.dp, if (selected) Brand else Line, RoundedCornerShape(12.dp))
+                        .clickable { onChange(value) }
+                        .padding(horizontal = 6.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) Color.White else Ink2,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }
 

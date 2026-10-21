@@ -25,6 +25,8 @@ object Config {
     /** نام مجموعه‌ها در Firestore */
     const val COL_JOBS = "jobs"
     const val COL_APPLICANTS = "applicants"
+    /** هتل‌های مسیریابی؛ فقط مدیر می‌نویسد، کاربران واردشده می‌خوانند. */
+    const val COL_HOTELS = "hotels"
     const val COL_ADMINS = "admins"
 
     /** #29: پسندیده‌ها و درخواست‌های ارسالی کاربران (برای دیدن مدیر در پنل) */

@@ -48,8 +48,7 @@ fun HomeContent(
     onGoPay: () -> Unit = {},                    // #35: رفتن به صفحه‌ی پرداخت
     loading: Boolean,
     onFilterChange: (JobFilter) -> Unit,
-    onOpenJob: (Job) -> Unit,
-    onLanguage: () -> Unit
+    onOpenJob: (Job) -> Unit
 ) {
     SystemBars(darkIcons = false)
 
@@ -86,9 +85,6 @@ fun HomeContent(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                }
-                IconButton(onClick = onLanguage) {
-                    Text("🌐", fontSize = 20.sp)
                 }
             }
             Spacer(Modifier.height(12.dp))

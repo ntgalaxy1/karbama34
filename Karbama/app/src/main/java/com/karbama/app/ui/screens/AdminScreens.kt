@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -57,6 +58,8 @@ import com.karbama.app.util.FormatUtils
 import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
+import com.karbama.app.data.model.Hotel
+import com.karbama.app.data.routes.RoutesRepo
 import com.karbama.app.data.sample.Catalog
 import com.karbama.app.ui.components.*
 import com.karbama.app.ui.i18n.Loc
@@ -217,6 +220,7 @@ fun AdminContent(
     mode: String,
     jobs: List<Job>,
     applicants: List<Applicant>,
+    hotels: List<com.karbama.app.data.model.Hotel> = emptyList(),
     onNewJob: () -> Unit,
     onEditJob: (Job) -> Unit,
     onDeleteJob: (Job) -> Unit,
@@ -237,6 +241,10 @@ fun AdminContent(
     adsFee: Long = 6000L,                                   // #34: هزینه‌ی نمایش آگهی‌ها
     onSaveAdsFee: (Long) -> Unit = {},                      // #34
     onSetPayment: (Applicant, String) -> Unit = { _, _ -> },  // #34: تأیید/لغو پرداخت
+    onSaveHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    onDeleteHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    themeMode: String = com.karbama.app.ui.theme.ThemeMode.SYSTEM,
+    onThemeChange: (String) -> Unit = {},
     onExit: () -> Unit,
     initialTab: Int = 0,                                     // v51: برای رندر آزمایشی تب‌ها
     adminEmail: String = "",                                 // v51: «یوزرنیم مدیر» = ایمیل Firebase
@@ -382,6 +390,11 @@ fun AdminContent(
                 totalCount = applicants.size,
                 adminEmail = adminEmail,                          // v51
                 onChangeAdminPassword = onChangeAdminPassword,    // v51
+                hotels = hotels,
+                onSaveHotel = onSaveHotel,
+                onDeleteHotel = onDeleteHotel,
+                themeMode = themeMode,
+                onThemeChange = onThemeChange,
                 modifier = Modifier.padding(padding),
                 tabs = { AdminTabs(loc, tab, applicants.size) { tab = it } }
             )
@@ -1680,6 +1693,11 @@ private fun AdminSettingsTab(
     totalCount: Int = 0,
     adminEmail: String = "",                                            // v51
     onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") },   // v52
+    hotels: List<com.karbama.app.data.model.Hotel> = emptyList(),
+    onSaveHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    onDeleteHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    themeMode: String = com.karbama.app.ui.theme.ThemeMode.SYSTEM,
+    onThemeChange: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     tabs: @Composable () -> Unit = {}
 ) {
@@ -1883,12 +1901,26 @@ private fun AdminSettingsTab(
         Spacer(Modifier.height(16.dp))
 
         // ---------- ۳) کارت خلاصه‌ی خاکستری دمو ----------
-        AdmCard(padding = 16.dp, color = Color(0xFFF6FAFB)) {
+        AdmCard(padding = 16.dp, color = GraphiteLight) {
             SummaryLine(loc["und_brokerCard"], if (cardText.isBlank()) "—" else loc.digits(cardText))
             SummaryLine(loc["adm_user"], adminEmail.ifBlank { "—" })
             SummaryLine(loc["twofa_title"], loc[if (twoFAEnabled) "twofa_on" else "twofa_off"])
             SummaryLine(loc["und_signed"], loc.n(signedCount), " / " + loc.n(totalCount))
         }
+
+        Spacer(Modifier.height(16.dp))
+        AdmCard(padding = 16.dp) {
+            AdmSection(loc["theme_title"], loc["theme_settings_hint"])
+            ThemeModePicker(loc = loc, mode = themeMode, onChange = onThemeChange)
+        }
+
+        Spacer(Modifier.height(16.dp))
+        HotelManagerCard(
+            loc = loc,
+            hotels = hotels,
+            onSave = onSaveHotel,
+            onDelete = onDeleteHotel
+        )
     }
 
     // ---------- v52: تأیید پسورد فعلی (فقط وقتی Firebase «ورود اخیر» بخواهد) ----------
@@ -1977,6 +2009,140 @@ private fun AdminSettingsTab(
     }   // Box
 }
 
+
+/** مدیریت هتل‌های قابل نمایش در مسیر‌یابی؛ داده‌ها در مجموعهٔ hotels نگه‌داری می‌شوند. */
+@Composable
+private fun HotelManagerCard(
+    loc: Loc,
+    hotels: List<Hotel>,
+    onSave: (Hotel) -> Unit,
+    onDelete: (Hotel) -> Unit
+) {
+    val context = LocalContext.current
+    val cities = remember(context, loc.code) {
+        RoutesRepo.load(context, "TR")?.cities?.map { it.id to it.name(loc.code) } ?: emptyList()
+    }
+    var showEditor by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(Hotel()) }
+    var pendingDelete by remember { mutableStateOf<Hotel?>(null) }
+
+    AdmCard(padding = 16.dp) {
+        AdmSection(loc["hotel_manager"], loc["hotel_manager_hint"])
+        PrimaryButton(
+            text = "＋ " + loc["hotel_add"],
+            onClick = { editing = Hotel(); showEditor = true }
+        )
+        Spacer(Modifier.height(12.dp))
+        if (hotels.isEmpty()) {
+            Text(loc["hotel_empty"], style = MaterialTheme.typography.bodySmall, color = Ink3)
+        } else {
+            hotels.sortedWith(compareBy<Hotel> { it.cityId }.thenBy { it.name }).forEachIndexed { index, hotel ->
+                if (index > 0) HorizontalDivider(color = Line)
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🏨", fontSize = 20.sp)
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(hotel.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            listOf(hotel.cityId, hotel.address).filter { it.isNotBlank() }.joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Ink3,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    TextButton(onClick = { editing = hotel; showEditor = true }) {
+                        Text("✏️", fontSize = 16.sp)
+                    }
+                    TextButton(onClick = { pendingDelete = hotel }) {
+                        Text("🗑", fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showEditor) {
+        HotelEditorDialog(
+            loc = loc,
+            initial = editing,
+            cities = cities,
+            onDismiss = { showEditor = false },
+            onSave = { hotel -> onSave(hotel); showEditor = false }
+        )
+    }
+    pendingDelete?.let { hotel ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(loc["hotel_delete_title"]) },
+            text = { Text(loc.f("hotel_delete_hint", hotel.name)) },
+            confirmButton = {
+                TextButton(onClick = { onDelete(hotel); pendingDelete = null }) {
+                    Text(loc["del_yes"], color = Danger, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(loc["del_no"], color = Ink2) } }
+        )
+    }
+}
+
+@Composable
+private fun HotelEditorDialog(
+    loc: Loc,
+    initial: Hotel,
+    cities: List<Pair<String, String>>,
+    onDismiss: () -> Unit,
+    onSave: (Hotel) -> Unit
+) {
+    var name by remember(initial.id) { mutableStateOf(initial.name) }
+    var cityId by remember(initial.id) { mutableStateOf(initial.cityId) }
+    var address by remember(initial.id) { mutableStateOf(initial.address) }
+    var lat by remember(initial.id) { mutableStateOf(initial.lat.takeIf { it != 0.0 }?.toString().orEmpty()) }
+    var lon by remember(initial.id) { mutableStateOf(initial.lon.takeIf { it != 0.0 }?.toString().orEmpty()) }
+    val latValue = lat.trim().replace(',', '.').toDoubleOrNull()
+    val lonValue = lon.trim().replace(',', '.').toDoubleOrNull()
+    val valid = name.trim().isNotBlank() && cityId.isNotBlank() &&
+        latValue != null && lonValue != null && latValue in -90.0..90.0 && lonValue in -180.0..180.0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial.id.isBlank()) loc["hotel_add"] else loc["hotel_edit"]) },
+        text = {
+            // The compact form keeps the dialog stable even while a system keyboard is open.
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                KbField(value = name, onValueChange = { name = it }, label = loc["hotel_name"], required = true)
+                PickerField(
+                    label = loc["route_city"],
+                    value = cities.firstOrNull { it.first == cityId }?.second ?: cityId,
+                    placeholder = loc["route_choose_city"],
+                    options = cities,
+                    onSelect = { cityId = it },
+                    searchable = true,
+                    searchPlaceholder = loc["route_city_search"],
+                    required = true
+                )
+                KbField(value = address, onValueChange = { address = it }, label = loc["hotel_address"], singleLine = false, minLines = 2)
+                KbField(value = lat, onValueChange = { lat = it }, label = loc["hotel_lat"], placeholder = "41.0082", keyboardType = KeyboardType.Decimal, required = true)
+                KbField(value = lon, onValueChange = { lon = it }, label = loc["hotel_lon"], placeholder = "28.9784", keyboardType = KeyboardType.Decimal, required = true)
+                if (!valid && (name.isNotBlank() || cityId.isNotBlank() || lat.isNotBlank() || lon.isNotBlank())) {
+                    Text(loc["hotel_invalid"], style = MaterialTheme.typography.bodySmall, color = Danger)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = valid,
+                onClick = {
+                    onSave(initial.copy(name = name.trim(), cityId = cityId, address = address.trim(), lat = latValue!!, lon = lonValue!!))
+                }
+            ) { Text(loc["save"], color = BrandDark, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(loc["del_no"], color = Ink2) } }
+    )
+}
 
 /** خط کارت خلاصه‌ی دمو: .small.muted با line-height ۲٫۱ و مقدار پررنگ */
 @Composable

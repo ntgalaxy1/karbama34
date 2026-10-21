@@ -20,10 +20,10 @@ android {
         applicationId = "com.karbama.app"
         minSdk = 24
         targetSdk = 35
-        // نسخه‌گذاری (به خواست کاربر از v52.0.1): هر نسخه‌ی تازه فقط عدد آخر +۱ → 52.0.2، 52.0.3 …
-        // versionCode هم هر بار +۱ (اندروید برای نصب به‌روزرسانی لازم دارد)
-        versionCode = 55
-        versionName = "52.0.3"
+        // هر انتشار رسمی، شمارهٔ نسخه و versionCode یکتای خودش را دارد تا Android
+        // بتواند آن را به‌صورت به‌روزرسانیِ نسخهٔ قبلی نصب کند.
+        versionCode = 56
+        versionName = "52.0.4"
         vectorDrawables { useSupportLibrary = true }
     }
 

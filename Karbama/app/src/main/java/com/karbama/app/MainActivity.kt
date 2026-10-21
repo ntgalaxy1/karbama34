@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Home
@@ -28,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Job
+import com.karbama.app.data.model.Hotel
 import com.karbama.app.ui.AppViewModel
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.i18n.LocalLoc
@@ -45,12 +47,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: AppViewModel = viewModel()
             val loc = remember(vm.lang) { Loc(vm.lang) }
+            val systemDark = isSystemInDarkTheme()
+            val useDarkTheme = vm.resolvesDarkTheme(systemDark)
 
             CompositionLocalProvider(
                 LocalLoc provides loc,
                 LocalLayoutDirection provides if (loc.rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
             ) {
-                KarbamaTheme {
+                KarbamaTheme(darkTheme = useDarkTheme) {
                     AppRoot(vm, loc)
                 }
             }
@@ -81,6 +85,7 @@ private object Routes {
 fun AppRoot(vm: AppViewModel, loc: Loc) {
     val nav = rememberNavController()
     val jobs by vm.jobs.collectAsState()
+    val hotels by vm.hotels.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(vm.message) {
@@ -130,6 +135,8 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                         loc = loc,
                         jobsCount = jobs.size,
                         peopleCount = if (vm.adminMode == AdminMode.LIVE) 0 else 6,
+                        themeMode = vm.themeMode,
+                        onThemeChange = { vm.applyThemeMode(it) },
                         onStart = { nav.navigate(Routes.REGISTER) },
                         onLogin = { nav.navigate(Routes.LOGIN) },
                         onLanguage = { nav.navigate(Routes.LANGUAGE_PICK) }
@@ -164,8 +171,8 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                         vm = vm,
                         loc = loc,
                         jobs = jobs,
+                        hotels = hotels,
                         onOpenJob = { nav.navigate(Routes.job(it.id)) },
-                        onOpenLanguage = { nav.navigate(Routes.LANGUAGE_PICK) },
                         onOpenEditProfile = { nav.navigate(Routes.EDIT_PROFILE) },
                         onNewJob = { nav.navigate(Routes.JOB_NEW) },
                         onEditJob = { nav.navigate(Routes.jobEdit(it.id)) },
@@ -353,8 +360,8 @@ private fun MainShell(
     vm: AppViewModel,
     loc: Loc,
     jobs: List<Job>,
+    hotels: List<Hotel>,
     onOpenJob: (Job) -> Unit,
-    onOpenLanguage: () -> Unit,
     onOpenEditProfile: () -> Unit,
     onNewJob: () -> Unit,
     onEditJob: (Job) -> Unit,
@@ -456,6 +463,7 @@ private fun MainShell(
                     mode = vm.adminMode,
                     jobs = jobs,
                     applicants = applicants,
+                    hotels = hotels,
                     onNewJob = onNewJob,
                     onEditJob = onEditJob,
                     onDeleteJob = { vm.deleteJob(it.id) },   // #26: تأیید داخل خود پنل مدیریت پرسیده می‌شود
@@ -478,6 +486,10 @@ private fun MainShell(
                     adsFee = vm.adsFee,                                            // #34
                     onSaveAdsFee = { v -> vm.saveAdsFee(v) },                      // #34
                     onSetPayment = { person, st -> vm.setApplicantPayment(person, st) },  // #34
+                    onSaveHotel = { vm.saveHotel(it) },
+                    onDeleteHotel = { vm.deleteHotel(it) },
+                    themeMode = vm.themeMode,
+                    onThemeChange = { vm.applyThemeMode(it) },
                     onExit = {
                         // خروج مدیر → برگشت به صفحه‌ی ورود
                         vm.exitAdminPanel()
@@ -503,8 +515,7 @@ private fun MainShell(
                     likedIds = vm.likedIds,                  // #28
                     loading = loading,
                     onFilterChange = { vm.applyFilter(it) },
-                    onOpenJob = onOpenJob,
-                    onLanguage = onOpenLanguage
+                    onOpenJob = onOpenJob
                 )
 
 
@@ -519,6 +530,8 @@ private fun MainShell(
                     brokerCard = vm.brokerCard,
                     brokerHolder = vm.brokerHolder,
                     onLanguage = { vm.applyLang(it) },
+                    themeMode = vm.themeMode,
+                    onThemeChange = { vm.applyThemeMode(it) },
                     onLogout = {
                         vm.logout()
                         tab = 0
@@ -533,7 +546,7 @@ private fun MainShell(
                     onGoPay = onOpenPay            // #35: رفتن به صفحه‌ی پرداخت
                 )
 
-                tab == 2 -> RouteContent(loc = loc, applicant = vm.myProfile)
+                tab == 2 -> RouteContent(loc = loc, applicant = vm.myProfile, hotels = hotels)
 
                 tab == 3 -> ContactContent(loc = loc)
 

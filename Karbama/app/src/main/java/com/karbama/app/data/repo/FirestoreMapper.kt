@@ -4,6 +4,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.JobMedia
+import com.karbama.app.data.model.Hotel
 import com.karbama.app.data.model.MediaType
 import com.karbama.app.data.model.Undertaking
 
@@ -39,6 +40,27 @@ fun DocumentSnapshot.toJob(): Job = Job(
             poster = (m["poster"] as? String) ?: ""
         )
     }?.filter { it.url.isNotBlank() } ?: emptyList()
+)
+
+fun Hotel.toMap(): Map<String, Any> = mapOf(
+    "countryCode" to countryCode,
+    "cityId" to cityId,
+    "name" to name,
+    "address" to address,
+    "lat" to lat,
+    "lon" to lon,
+    "updatedAt" to updatedAt
+)
+
+fun DocumentSnapshot.toHotel(): Hotel = Hotel(
+    id = id,
+    countryCode = getString("countryCode") ?: "TR",
+    cityId = getString("cityId") ?: "",
+    name = getString("name") ?: "",
+    address = getString("address") ?: "",
+    lat = getDouble("lat") ?: 0.0,
+    lon = getDouble("lon") ?: 0.0,
+    updatedAt = getLong("updatedAt") ?: 0L
 )
 
 fun Job.toMap(): Map<String, Any> = mapOf(

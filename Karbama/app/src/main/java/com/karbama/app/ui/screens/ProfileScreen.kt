@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ import coil.compose.AsyncImage
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Status
+import com.karbama.app.data.routes.Destinations
 import com.karbama.app.ui.components.*
 import com.karbama.app.ui.i18n.Loc
 import com.karbama.app.ui.i18n.SUPPORTED_LANGS
@@ -49,6 +51,8 @@ fun ProfileContent(
     onRegister: () -> Unit,
     onEdit: () -> Unit,
     onLanguage: (String) -> Unit,
+    themeMode: String,
+    onThemeChange: (String) -> Unit,
     onLogout: () -> Unit,
     likedJobs: List<Job> = emptyList(),          // #28
     onOpenJob: (Job) -> Unit = {},               // #28
@@ -281,13 +285,13 @@ fun ProfileContent(
                 InfoRow(loc["residence"], listOf(applicant.city, applicant.district)
                         .filter { it.isNotEmpty() }.joinToString(" / "))
                     HorizontalDivider(color = Line)
-                    InfoRow(loc["destination_country"], if (applicant.destinationCountry == "TR" || applicant.destinationCountry.isBlank()) "🇹🇷 " + loc["route_country_tr"] else applicant.destinationCountry)
+                    InfoRow(loc["destination_country"], Destinations.of(Destinations.normalize(applicant.destinationCountry)).let { it.flag + " " + loc[it.nameKey] })
                     HorizontalDivider(color = Line)
                     InfoRow(loc["status_label"], loc.status(applicant.status))
                 }
 
                 Spacer(Modifier.height(12.dp))
-                GhostButton(text = "✏️ " + loc["edit_info"], onClick = onEdit)
+                PrimaryButton(text = "✏️ " + loc["edit_info"], icon = Icons.Filled.Edit, onClick = onEdit)
                 Spacer(Modifier.height(20.dp))
             }
 
@@ -373,11 +377,13 @@ fun ProfileContent(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                ThemeModePicker(loc = loc, mode = themeMode, onChange = onThemeChange)
+                Spacer(Modifier.height(4.dp))
             }
 
             Spacer(Modifier.height(16.dp))
-            GhostButton(
-                text = loc["logout"],
+            DangerButton(
+                text = "⏻ " + loc["logout"],
                 icon = Icons.AutoMirrored.Filled.Logout,
                 onClick = onLogout
             )

@@ -37,6 +37,21 @@ object MediaType {
     const val VIDEO = "video"
 }
 
+/**
+ * هتلِ قابل‌نمایش در بخش مسیریابی. فقط مدیر می‌تواند آن را در Firestore مدیریت کند.
+ * cityId همان شناسهٔ شهر در دادهٔ مسیر ترکیه (مثلاً istanbul) است.
+ */
+data class Hotel(
+    val id: String = "",
+    val countryCode: String = "TR",
+    val cityId: String = "",
+    val name: String = "",
+    val address: String = "",
+    val lat: Double = 0.0,
+    val lon: Double = 0.0,
+    val updatedAt: Long = 0L
+)
+
 /** متقاضی کار */
 data class Applicant(
     val id: String = "",

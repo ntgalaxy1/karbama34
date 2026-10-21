@@ -27,11 +27,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karbama.app.data.model.Applicant
+import com.karbama.app.data.model.Hotel
 import com.karbama.app.data.routes.Destinations
 import com.karbama.app.data.routes.RouteCity
 import com.karbama.app.data.routes.RouteLine
 import com.karbama.app.data.routes.RoutePlace
 import com.karbama.app.data.routes.RoutesRepo
+import com.karbama.app.data.routes.TurkeyHospitals
 import com.karbama.app.ui.components.BrandLogo
 import com.karbama.app.ui.components.EmptyState
 import com.karbama.app.ui.components.KbField
@@ -48,7 +50,7 @@ import com.karbama.app.ui.theme.*
  * تنها دکمهٔ «نقشه» برنامهٔ نقشه/مرورگر گوشی را با مختصات همان مکان باز می‌کند.
  */
 @Composable
-fun RouteContent(loc: Loc, applicant: Applicant?) {
+fun RouteContent(loc: Loc, applicant: Applicant?, hotels: List<Hotel> = emptyList()) {
     SystemBars(darkIcons = false)
     val context = LocalContext.current
     val countryCode = Destinations.normalize(applicant?.destinationCountry)
@@ -59,6 +61,13 @@ fun RouteContent(loc: Loc, applicant: Applicant?) {
         Column(Modifier.fillMaxSize().background(Bg)) {
             RouteHeader(loc, dest.flag + " " + loc["route_title"], loc["route_subtitle"])
             EmptyState("🧭", loc["route_need_register"], loc["route_need_register_hint"])
+        }
+        return
+    }
+    if (dest.asset == null) {
+        Column(Modifier.fillMaxSize().background(Bg)) {
+            RouteHeader(loc, dest.flag + " " + loc["route_title"], loc.f("route_for_country", loc[dest.nameKey]))
+            EmptyState("🧭", loc["route_country_pending"], loc.f("route_country_pending_hint", loc[dest.nameKey]))
         }
         return
     }
@@ -135,6 +144,7 @@ fun RouteContent(loc: Loc, applicant: Applicant?) {
             RouteCityContent(
                 loc = loc,
                 city = city,
+                hotels = hotels,
                 query = query,
                 onOpenPlace = { openMap(context, it) }
             )
@@ -176,6 +186,7 @@ private fun RouteHeader(loc: Loc, title: String, subtitle: String) {
 private fun RouteCityContent(
     loc: Loc,
     city: RouteCity,
+    hotels: List<Hotel>,
     query: String,
     onOpenPlace: (RoutePlace) -> Unit
 ) {
@@ -184,6 +195,13 @@ private fun RouteCityContent(
     val lines = city.lines.filter { line ->
         q.isBlank() || line.ref.contains(q, true) || line.title.contains(q, true) || line.stations.any { it.name.contains(q, true) }
     }
+    // فهرست بیمارستان‌ها با دادهٔ OSM داخل APK است؛ هتل‌ها را مدیر در Firestore مدیریت می‌کند.
+    val hospitals = TurkeyHospitals.forCity(city.id).filter { q.isBlank() || it.name.contains(q, true) }
+    val cityHotels = hotels.asSequence()
+        .filter { it.countryCode == "TR" && it.cityId.equals(city.id, ignoreCase = true) }
+        .filter { q.isBlank() || it.name.contains(q, true) || it.address.contains(q, true) }
+        .map { RoutePlace(it.name, it.lat, it.lon, it.address) }
+        .toList()
 
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,7 +237,29 @@ private fun RouteCityContent(
             }
         }
 
-        if (airports.isEmpty() && lines.isEmpty()) {
+        if (hospitals.isNotEmpty()) {
+            Spacer(Modifier.height(18.dp))
+            RouteSectionLabel("🏥", loc["route_hospitals"])
+            Spacer(Modifier.height(8.dp))
+            hospitals.forEachIndexed { index, place ->
+                PlaceRow(place, code = "", loc = loc, icon = "⚕", onOpenPlace = onOpenPlace)
+                if (index != hospitals.lastIndex) HorizontalDivider(color = Line)
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        RouteSectionLabel("🏨", loc["route_hotels"])
+        Spacer(Modifier.height(8.dp))
+        if (cityHotels.isEmpty()) {
+            Text(loc["route_hotels_empty"], style = MaterialTheme.typography.bodySmall, color = Ink3)
+        } else {
+            cityHotels.forEachIndexed { index, place ->
+                PlaceRow(place, code = place.code, loc = loc, icon = "🏨", onOpenPlace = onOpenPlace)
+                if (index != cityHotels.lastIndex) HorizontalDivider(color = Line)
+            }
+        }
+
+        if (airports.isEmpty() && lines.isEmpty() && hospitals.isEmpty() && cityHotels.isEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text(loc["route_no_result"], style = MaterialTheme.typography.bodyMedium, color = Ink3)
         }
@@ -236,13 +276,13 @@ private fun RouteSectionLabel(icon: String, text: String) {
 }
 
 @Composable
-private fun PlaceRow(place: RoutePlace, code: String, loc: Loc, onOpenPlace: (RoutePlace) -> Unit) {
+private fun PlaceRow(place: RoutePlace, code: String, loc: Loc, icon: String = "✈", onOpenPlace: (RoutePlace) -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(30.dp).clip(CircleShape).background(AccentLight), contentAlignment = Alignment.Center) {
-            Text("✈", fontSize = 15.sp)
+            Text(icon, fontSize = 15.sp)
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
@@ -335,10 +375,7 @@ private fun routeKind(loc: Loc, k: String): String = loc["route_kind_$k"]
 private fun routeKindShort(k: String): String = when (k) { "metrobus" -> "MB"; "funicular" -> "F"; else -> k.take(1).uppercase() }
 private fun Double.toGeoText(): String = "%.5f".format(java.util.Locale.US, this)
 
-private fun countryName(code: String, loc: Loc): String = when (code) {
-    "TR" -> loc["route_country_tr"]
-    else -> code
-}
+private fun countryName(code: String, loc: Loc): String = loc[Destinations.of(code).nameKey]
 
 private fun openMap(context: android.content.Context, p: RoutePlace) {
     val label = Uri.encode(p.name)
