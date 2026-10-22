@@ -1,6 +1,5 @@
 package com.karbama.app.data.repo
 
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.karbama.app.data.Service
 import kotlinx.coroutines.tasks.await
 
@@ -23,20 +22,22 @@ class AccountDeletionRepository {
     suspend fun requestCurrentApplicantDeletion(): RequestResult {
         val db = Service.db ?: return RequestResult.Failed(IllegalStateException("Firebase is unavailable"))
         val uid = Service.currentUid ?: return RequestResult.Failed(IllegalStateException("Sign-in is required"))
+        val request = db.collection(COLLECTION).document(uid)
         return try {
-            db.collection(COLLECTION).document(uid).create(
-                mapOf(
-                    "uid" to uid,
-                    "status" to STATUS_REQUESTED,
-                    "requestedAt" to System.currentTimeMillis()
-                )
-            ).await()
-            RequestResult.Submitted
-        } catch (error: FirebaseFirestoreException) {
-            if (error.code == FirebaseFirestoreException.Code.ALREADY_EXISTS) {
+            // Android's Firestore SDK has set(), not DocumentReference.create().
+            // Rules still permit only a create, so an existing request is never
+            // overwritten; checking first gives the user an accurate pending state.
+            if (request.get().await().exists()) {
                 RequestResult.AlreadySubmitted
             } else {
-                RequestResult.Failed(error)
+                request.set(
+                    mapOf(
+                        "uid" to uid,
+                        "status" to STATUS_REQUESTED,
+                        "requestedAt" to System.currentTimeMillis()
+                    )
+                ).await()
+                RequestResult.Submitted
             }
         } catch (error: Throwable) {
             RequestResult.Failed(error)
