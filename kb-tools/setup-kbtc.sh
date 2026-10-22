@@ -1,12 +1,12 @@
 #!/bin/bash
-# Fresh-sandbox setup for the Karbama Android build (JDK17 + SDK 35 + swap + gh). Idempotent.
+# Fresh-sandbox setup for the Karbama Android build (JDK17 + SDK 36 + swap + gh). Idempotent.
 set -e
 sudo mkdir -p /opt/kbtc && sudo chown user:user /opt/kbtc
 if [ ! -x /opt/kbtc/jdk17/bin/java ]; then
   curl -sL -o /var/tmp/jdk17.tgz "https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse"
   mkdir -p /opt/kbtc/jdk17 && tar xzf /var/tmp/jdk17.tgz -C /opt/kbtc/jdk17 --strip-components=1 && rm /var/tmp/jdk17.tgz
 fi
-if [ ! -d /opt/kbtc/android-sdk/build-tools/35.0.0 ]; then
+if [ ! -d /opt/kbtc/android-sdk/platforms/android-36 ] || [ ! -d /opt/kbtc/android-sdk/build-tools/36.0.0 ]; then
   curl -sL -o /var/tmp/cmd.zip https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
   rm -rf /var/tmp/cmdt && unzip -q /var/tmp/cmd.zip -d /var/tmp/cmdt
   mkdir -p /opt/kbtc/android-sdk/cmdline-tools && rm -rf /opt/kbtc/android-sdk/cmdline-tools/latest
@@ -14,7 +14,7 @@ if [ ! -d /opt/kbtc/android-sdk/build-tools/35.0.0 ]; then
   S=/opt/kbtc/android-sdk/cmdline-tools/latest/bin/sdkmanager
   export JAVA_HOME=/opt/kbtc/jdk17
   yes | $S --sdk_root=/opt/kbtc/android-sdk --licenses >/dev/null 2>&1 || true
-  $S --sdk_root=/opt/kbtc/android-sdk "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /var/tmp/sdk.log 2>&1
+  $S --sdk_root=/opt/kbtc/android-sdk "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /var/tmp/sdk.log 2>&1
 fi
 if ! sudo swapon --show | grep -q swapfile; then
   [ -f /var/swapfile ] || { sudo fallocate -l 4G /var/swapfile; sudo chmod 600 /var/swapfile; sudo mkswap /var/swapfile >/dev/null; }

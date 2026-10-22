@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,10 +60,32 @@ fun ProfileContent(
     onUnlike: (Job) -> Unit = {},                // #28
     adsFee: Long = 0L,                           // #34
     adsLocked: Boolean = false,                  // #34
-    onGoPay: () -> Unit = {}                     // #34
+    onGoPay: () -> Unit = {},                    // #34
+    accountDeletionAvailable: Boolean = false,
+    onRequestAccountDeletion: () -> Unit = {}
 ) {
     SystemBars(darkIcons = false)
     var showUndertaking by remember { mutableStateOf(false) }
+    var showDeletionConfirm by remember { mutableStateOf(false) }
+
+    if (showDeletionConfirm && applicant != null) {
+        AlertDialog(
+            onDismissRequest = { showDeletionConfirm = false },
+            title = { Text(loc["delete_account_request_title"]) },
+            text = { Text(loc["delete_account_request_body"]) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeletionConfirm = false
+                    onRequestAccountDeletion()
+                }) { Text(loc["delete_account_request_confirm"]) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletionConfirm = false }) {
+                    Text(loc["cancel"])
+                }
+            }
+        )
+    }
 
     // ---- برگه‌ی تعهدنامه (نمای خواندنی) ----
     if (showUndertaking && applicant != null) {
@@ -292,6 +315,28 @@ fun ProfileContent(
 
                 Spacer(Modifier.height(12.dp))
                 PrimaryButton(text = "✏️ " + loc["edit_info"], icon = Icons.Filled.Edit, onClick = onEdit)
+
+                // Google Play requires an in-app route that lets account holders
+                // initiate deletion. This only sends a minimal request; the actual
+                // erasure is reviewed against the published retention policy.
+                if (accountDeletionAvailable) {
+                    Spacer(Modifier.height(12.dp))
+                    SectionCard {
+                        SectionTitle(loc["delete_account"])
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            loc["delete_account_request_note"],
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Ink3
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        DangerButton(
+                            text = loc["delete_account_request_button"],
+                            icon = Icons.Filled.DeleteForever,
+                            onClick = { showDeletionConfirm = true }
+                        )
+                    }
+                }
                 Spacer(Modifier.height(20.dp))
             }
 

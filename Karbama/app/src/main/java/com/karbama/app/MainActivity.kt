@@ -27,6 +27,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.karbama.app.data.Service
 import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Hotel
@@ -560,7 +561,9 @@ private fun MainShell(
                     onUnlike = { vm.toggleLike(it.id) },
                     adsFee = vm.adsFee,            // #34
                     adsLocked = !adsUnlocked,      // #34
-                    onGoPay = onOpenPay            // #35: رفتن به صفحه‌ی پرداخت
+                    onGoPay = onOpenPay,           // #35: رفتن به صفحه‌ی پرداخت
+                    accountDeletionAvailable = Service.ready,
+                    onRequestAccountDeletion = { vm.requestAccountDeletion() }
                 )
 
                 tab == 2 -> RouteContent(loc = loc, applicant = vm.myProfile, hotels = hotels)

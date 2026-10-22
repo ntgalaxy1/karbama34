@@ -58,7 +58,7 @@ python3 -m http.server 8081
 cd Karbama
 ./gradlew :app:assembleDebug     # خروجی: app/build/outputs/apk/debug/app-debug.apk
 ```
-> JDK 21 و Android SDK 35 لازم است. جزئیات در [`Karbama/README.md`](Karbama/README.md).
+> در CI از JDK 17 و Android SDK 36 استفاده می‌شود (JDK سازگارِ جدیدتر هم قابل استفاده است). جزئیات در [`Karbama/README.md`](Karbama/README.md).
 
 **داده‌های واقعی (اختیاری):** راهنمای فارسی اتصال Firebase در [`Karbama/FIREBASE-SETUP-fa.md`](Karbama/FIREBASE-SETUP-fa.md) — بدون Firebase هم برنامه آفلاین کار می‌کند.
 

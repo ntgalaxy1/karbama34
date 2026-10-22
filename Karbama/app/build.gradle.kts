@@ -22,18 +22,17 @@ if (file("google-services.json").exists()) {
 
 android {
     namespace = "com.karbama.app"
-    compileSdk = 35
+    // Google Play requires Android 16 / API 36 for new submissions from 31 August 2026.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.karbama.app"
         minSdk = 24
-        targetSdk = 35
-        // هر انتشار رسمی، شمارهٔ نسخه و versionCode یکتای خودش را دارد تا Android
-        // بتواند آن را به‌صورت به‌روزرسانیِ نسخهٔ قبلی نصب کند.
-        // v10.0.1 is the new permanent-signing baseline. versionCode remains
-        // monotonic so Android can recognise every later APK as an update.
-        versionCode = 10002
-        versionName = "10.0.2"
+        targetSdk = 36
+        // v10.0.1 is the permanent-signing baseline. Version codes stay monotonic
+        // so GitHub APK users and the future Play track can recognise later updates.
+        versionCode = 10003
+        versionName = "10.0.3"
         vectorDrawables { useSupportLibrary = true }
     }
 

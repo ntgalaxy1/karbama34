@@ -394,6 +394,24 @@ service cloud.firestore {
         );
     }
 
+    // Minimal in-app deletion intake. The applicant can initiate one request,
+    // but only an administrator may review or complete it. No profile/document
+    // contents are duplicated here: the document id and uid are the account UID.
+    match /accountDeletionRequests/{uid} {
+      allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/applicants/$(uid))
+        && request.resource.data.keys().hasOnly(["uid", "status", "requestedAt"])
+        && request.resource.data.keys().hasAll(["uid", "status", "requestedAt"])
+        && request.resource.data.uid == uid
+        && request.resource.data.status == "requested"
+        && request.resource.data.requestedAt is int;
+      // Fulfilment and any retention decision are an administrator operation.
+      allow update, delete: if isAdmin();
+    }
+
     // Account metadata is written exclusively by callable Functions. A user may
     // read only their own non-secret record; admins may audit all records.
     match /accounts/{uid} {

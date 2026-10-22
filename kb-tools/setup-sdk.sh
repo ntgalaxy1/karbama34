@@ -16,8 +16,11 @@ if [ ! -x /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
   rm -rf /opt/android-sdk/cmdline-tools/latest
   mv /tmp/cmdtools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
   yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /tmp/setup-lic.log 2>&1
-  /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /tmp/setup-sdk.log 2>&1
 fi
+# Keep this outside the cmdline-tools bootstrap condition so an existing SDK is
+# upgraded with the API 36 platform as well.
+yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /tmp/setup-lic.log 2>&1 || true
+/opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /tmp/setup-sdk.log 2>&1
 sudo mkdir -p /opt/gradle-home; sudo chown -R user:user /opt/gradle-home
 chmod +x /home/user/Karbama/gradlew
 echo "=== SDK READY ==="

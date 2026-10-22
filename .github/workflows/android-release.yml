@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build-and-release:
-    name: Build, test, and publish APK
+    name: Build, test, publish APK, and retain private Play bundle
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -46,6 +46,18 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+
+      - name: Install Android 16 SDK platform
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER" || { echo "sdkmanager was not found."; exit 1; }
+          # Runner images normally have accepted licenses.  This is harmless when they
+          # are already present and makes the API 36 platform installation deterministic.
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          set -o pipefail
+          "$SDKMANAGER" --install "platforms;android-36"
 
       - name: Restore Firebase configuration and permanent release signer
         env:
@@ -75,7 +87,7 @@ jobs:
             exit 1
           }
 
-      - name: Test and build APK
+      - name: Test and build APK plus Play App Bundle
         working-directory: Karbama
         env:
           JAVA_TOOL_OPTIONS: -Dkbshots.dir=${{ github.workspace }}/kb-tools/shots
@@ -90,32 +102,53 @@ jobs:
           # developer default. Keep this runner-only so constrained local tests
           # remain predictable while signed release builds complete reliably.
           ./gradlew --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:+UseG1GC -Dfile.encoding=UTF-8" \
-            -Pkbshots testDebugUnitTest assembleRelease \
+            -Pkbshots testDebugUnitTest assembleRelease bundleRelease \
             -Pkarbama.release.storeFile="$RUNNER_TEMP/karbama-release.jks" \
             -Pkarbama.release.storePassword="$KARBAMA_RELEASE_STORE_PASSWORD" \
             -Pkarbama.release.keyAlias="$KARBAMA_RELEASE_KEY_ALIAS" \
             -Pkarbama.release.keyPassword="$KARBAMA_RELEASE_KEY_PASSWORD"
 
-      - name: Prepare and verify permanent release asset
+      - name: Prepare and verify APK plus Play App Bundle
         id: asset
+        env:
+          KARBAMA_RELEASE_CERT_SHA256: ${{ vars.KARBAMA_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
           APK="Karbama/app/build/outputs/apk/release/app-release.apk"
+          AAB="Karbama/app/build/outputs/bundle/release/app-release.aab"
           test -s "$APK" || { echo "APK was not produced."; exit 1; }
+          test -s "$AAB" || { echo "Play App Bundle was not produced."; exit 1; }
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           test -x "$APKSIGNER" || { echo "apksigner was not found."; exit 1; }
-          # The restored keystore/alias was fingerprint-checked against the expected
-          # permanent certificate before Gradle ran. Here apksigner verifies that the
-          # emitted APK has a valid signature; parsing its human-oriented output again
-          # was brittle across Android build-tools releases.
+          # The restored keystore/alias was fingerprint-checked before Gradle ran.
+          # Verify the APK cryptographically and independently confirm that the AAB
+          # carries that same certificate. The AAB stays an Actions artifact only,
+          # never a Git file or public GitHub Release asset.
           "$APKSIGNER" verify --verbose --print-certs "$APK" >/dev/null
+          jarsigner -verify -certs "$AAB" >/dev/null
+          bundle_cert="$(keytool -printcert -jarfile "$AAB" 2>/dev/null | awk -F': ' '/SHA256:/{gsub(":", "", $2); print tolower($2); exit}')"
+          expected_cert="$(printf '%s' "$KARBAMA_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          test -n "$bundle_cert" && test "$bundle_cert" = "$expected_cert" || { echo "Play App Bundle signer mismatch."; exit 1; }
           mkdir -p release
           ASSET="release/Karbama-${RELEASE_TAG}.apk"
+          BUNDLE="release/Karbama-${RELEASE_TAG}.aab"
           cp "$APK" "$ASSET"
+          cp "$AAB" "$BUNDLE"
           echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "bundle=$BUNDLE" >> "$GITHUB_OUTPUT"
           echo "md5=$(md5sum "$ASSET" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$ASSET" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
           echo "bytes=$(stat -c '%s' "$ASSET")" >> "$GITHUB_OUTPUT"
+          echo "bundle_sha256=$(sha256sum "$BUNDLE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "bundle_bytes=$(stat -c '%s' "$BUNDLE")" >> "$GITHUB_OUTPUT"
+
+      - name: Retain private Play App Bundle for Console upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Karbama-${{ env.RELEASE_TAG }}-play-bundle
+          path: ${{ steps.asset.outputs.bundle }}
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Create GitHub Release and upload APK
         if: ${{ inputs.dry_run != true }}

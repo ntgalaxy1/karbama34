@@ -22,6 +22,7 @@ import com.karbama.app.data.repo.HotelRepository
 import com.karbama.app.data.repo.IdentityRepository
 import com.karbama.app.data.repo.UserActivityRepository
 import com.karbama.app.data.repo.ActivityItem
+import com.karbama.app.data.repo.AccountDeletionRepository
 import com.karbama.app.data.Config
 import com.karbama.app.ui.screens.LoginOutcome
 import com.karbama.app.util.TotpUtil
@@ -55,6 +56,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val applicantRepo = ApplicantRepository()
     private val activityRepo = UserActivityRepository()
     private val identityRepo = IdentityRepository()
+    private val accountDeletionRepo = AccountDeletionRepository()
 
     // ---------- زبان ----------
     var lang by mutableStateOf(prefs.lang ?: LANG_FA)
@@ -240,6 +242,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             prefs.saveMyProfile(applicant)
             busy = false
             onDone()
+        }
+    }
+
+    /**
+     * Starts a manual account/data-deletion process in the connected app.
+     * It is intentionally an intake request: actual erasure can require a
+     * retention review and server-side Firebase Auth administration.
+     */
+    fun requestAccountDeletion() {
+        if (myProfile == null || !Service.ready) {
+            message = "⚠️ " + loc()["delete_account_request_unavailable"]
+            return
+        }
+        viewModelScope.launch {
+            busy = true
+            val result = withContext(Dispatchers.IO) {
+                accountDeletionRepo.requestCurrentApplicantDeletion()
+            }
+            busy = false
+            message = when (result) {
+                AccountDeletionRepository.RequestResult.Submitted ->
+                    "✅ " + loc()["delete_account_request_sent"]
+                AccountDeletionRepository.RequestResult.AlreadySubmitted ->
+                    "ℹ️ " + loc()["delete_account_request_pending"]
+                is AccountDeletionRepository.RequestResult.Failed ->
+                    "⚠️ " + friendlyError(result.error, "delete_account_request_failed")
+            }
         }
     }
 
