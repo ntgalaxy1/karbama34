@@ -86,7 +86,11 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           mkdir -p "$GITHUB_WORKSPACE/kb-tools/shots"
-          ./gradlew --no-daemon -Pkbshots testDebugUnitTest assembleRelease \
+          # R8 minification needs more heap than the deliberately small local
+          # developer default. Keep this runner-only so constrained local tests
+          # remain predictable while signed release builds complete reliably.
+          ./gradlew --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:+UseG1GC -Dfile.encoding=UTF-8" \
+            -Pkbshots testDebugUnitTest assembleRelease \
             -Pkarbama.release.storeFile="$RUNNER_TEMP/karbama-release.jks" \
             -Pkarbama.release.storePassword="$KARBAMA_RELEASE_STORE_PASSWORD" \
             -Pkarbama.release.keyAlias="$KARBAMA_RELEASE_KEY_ALIAS" \
