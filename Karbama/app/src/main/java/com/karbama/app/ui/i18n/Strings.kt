@@ -107,7 +107,7 @@ fun langFlag(code: String): String = when (code) {
 private val PERSIAN = mapOf(
     "app_name" to "کارباما",
     "app_latin" to "KARBAMA",
-    "tagline" to "کاریابی مطمئن برای فارسی‌زبانان در ترکیه",
+    "tagline" to "کاریابی مطمئن برای ایرانیان در ترکیه و سایر کشورهای منطقه",
 
     // زبان
     "lang_title" to "زبان برنامه را انتخاب کنید",
@@ -115,7 +115,7 @@ private val PERSIAN = mapOf(
 
     // خوش‌آمدگویی
     "welcome_title" to "به کارباما خوش آمدید",
-    "welcome_sub" to "آگهی‌های استخدام به‌روز از سراسر ترکیه، به همراه معرفی مستقیم شما به کارفرما و بدون واسطه",
+    "welcome_sub" to "آگهی‌های استخدام به‌روز از ترکیه و سایر کشورهای منطقه، به همراه معرفی مستقیم شما به کارفرما و بدون واسطه",
     "start_btn" to "شروع ثبت‌نام",
     "already_registered" to "ورود به برنامه",
     "browse_first" to "فقط می‌خواهم آگهی‌ها را ببینم",
@@ -634,7 +634,15 @@ private val PERSIAN = mapOf(
     "hotel_lon" to "طول جغرافیایی (Longitude)",
     "hotel_invalid" to "نام، شهر و مختصات معتبر را وارد کنید.",
     "hotel_delete_title" to "حذف هتل",
-    "hotel_delete_hint" to "«{0}» از مسیریابی حذف شود؟"
+    "hotel_delete_hint" to "«{0}» از مسیریابی حذف شود؟",
+    "hotel_pick_map" to "انتخاب موقعیت روی نقشه",
+    "hotel_pick_map_hint" to "روی موقعیت دقیق هتل در نقشه بزنید. نقشه برای بارگذاری به اینترنت نیاز دارد.",
+    "hotel_selected_location" to "موقعیت انتخاب‌شده",
+    "hotel_use_location" to "استفاده از این موقعیت",
+    "hotel_show_map" to "نمایش هتل‌ها روی نقشه",
+    "hotel_show_map_hint" to "برای دیدن نام و نشانی، نشانگر هر هتل را بزنید. نقشه برای بارگذاری به اینترنت نیاز دارد.",
+    "hotel_map_title" to "موقعیت هتل‌ها",
+    "hotel_map_attribution" to "© مشارکت‌کنندگان OpenStreetMap (ODbL)"
 
 )
 
@@ -1155,7 +1163,15 @@ private val TURKISH = mapOf(
     "hotel_lon" to "Boylam (Longitude)",
     "hotel_invalid" to "Geçerli otel adı, şehir ve koordinat girin.",
     "hotel_delete_title" to "Oteli sil",
-    "hotel_delete_hint" to "“{0}” rota rehberinden silinsin mi?"
+    "hotel_delete_hint" to "“{0}” rota rehberinden silinsin mi?",
+    "hotel_pick_map" to "Haritada konum seç",
+    "hotel_pick_map_hint" to "Haritada otelin tam konumuna dokunun. Haritanın yüklenmesi için internet gerekir.",
+    "hotel_selected_location" to "Seçilen konum",
+    "hotel_use_location" to "Bu konumu kullan",
+    "hotel_show_map" to "Otelleri haritada göster",
+    "hotel_show_map_hint" to "Adı ve adresi görmek için otel işaretçisine dokunun. Haritanın yüklenmesi için internet gerekir.",
+    "hotel_map_title" to "Otel konumları",
+    "hotel_map_attribution" to "© OpenStreetMap contributors (ODbL)"
 
 )
 
@@ -1676,7 +1692,15 @@ private val ENGLISH = mapOf(
     "hotel_lon" to "Longitude",
     "hotel_invalid" to "Enter a valid hotel name, city, and coordinates.",
     "hotel_delete_title" to "Delete hotel",
-    "hotel_delete_hint" to "Remove “{0}” from routing?"
+    "hotel_delete_hint" to "Remove “{0}” from routing?",
+    "hotel_pick_map" to "Choose location on map",
+    "hotel_pick_map_hint" to "Tap the hotel's exact location on the map. Internet is required to load the map.",
+    "hotel_selected_location" to "Selected location",
+    "hotel_use_location" to "Use this location",
+    "hotel_show_map" to "Show hotels on map",
+    "hotel_show_map_hint" to "Tap a hotel marker to see its name and address. Internet is required to load the map.",
+    "hotel_map_title" to "Hotel locations",
+    "hotel_map_attribution" to "© OpenStreetMap contributors (ODbL)"
 
 )
 
@@ -2185,7 +2209,15 @@ private val ARABIC = mapOf(
     "hotel_lon" to "خط الطول",
     "hotel_invalid" to "أدخل اسم الفندق والمدينة والإحداثيات بصورة صحيحة.",
     "hotel_delete_title" to "حذف الفندق",
-    "hotel_delete_hint" to "هل تريد حذف «{0}» من المسارات؟"
+    "hotel_delete_hint" to "هل تريد حذف «{0}» من المسارات؟",
+    "hotel_pick_map" to "اختر الموقع على الخريطة",
+    "hotel_pick_map_hint" to "اضغط على موقع الفندق الدقيق على الخريطة. يلزم اتصال بالإنترنت لتحميل الخريطة.",
+    "hotel_selected_location" to "الموقع المحدد",
+    "hotel_use_location" to "استخدم هذا الموقع",
+    "hotel_show_map" to "عرض الفنادق على الخريطة",
+    "hotel_show_map_hint" to "اضغط على علامة الفندق لرؤية الاسم والعنوان. يلزم اتصال بالإنترنت لتحميل الخريطة.",
+    "hotel_map_title" to "مواقع الفنادق",
+    "hotel_map_attribution" to "© OpenStreetMap contributors (ODbL)"
 
 )
 

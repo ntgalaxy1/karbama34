@@ -32,8 +32,8 @@ android {
         // بتواند آن را به‌صورت به‌روزرسانیِ نسخهٔ قبلی نصب کند.
         // v10.0.1 is the new permanent-signing baseline. versionCode remains
         // monotonic so Android can recognise every later APK as an update.
-        versionCode = 10001
-        versionName = "10.0.1"
+        versionCode = 10002
+        versionName = "10.0.2"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -118,6 +118,8 @@ dependencies {
     implementation(libs.firebase.storage)
 
     implementation(libs.coil.compose)
+    // Pinned final osmdroid release: embedded OpenStreetMap picker/display, no Maps API key.
+    implementation(libs.osmdroid.android)
     implementation(libs.androidx.exifinterface)
     implementation(libs.kotlinx.coroutines.play.services)
 

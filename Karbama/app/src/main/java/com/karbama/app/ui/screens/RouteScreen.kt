@@ -37,6 +37,8 @@ import com.karbama.app.data.routes.TurkeyHospitals
 import com.karbama.app.ui.components.BrandLogo
 import com.karbama.app.ui.components.EmptyState
 import com.karbama.app.ui.components.KbField
+import com.karbama.app.ui.components.OpenStreetMapHotelsDialog
+import com.karbama.app.ui.components.OpenStreetMapPoint
 import com.karbama.app.ui.components.PickerField
 import com.karbama.app.ui.components.SectionCard
 import com.karbama.app.ui.components.SectionTitle
@@ -198,10 +200,11 @@ private fun RouteCityContent(
     // فهرست بیمارستان‌ها با دادهٔ OSM داخل APK است؛ هتل‌ها را مدیر در Firestore مدیریت می‌کند.
     val hospitals = TurkeyHospitals.forCity(city.id).filter { q.isBlank() || it.name.contains(q, true) }
     val cityHotels = hotels.asSequence()
-        .filter { it.countryCode == "TR" && it.cityId.equals(city.id, ignoreCase = true) }
+        .filter { it.active && it.countryCode == "TR" && it.cityId.equals(city.id, ignoreCase = true) }
         .filter { q.isBlank() || it.name.contains(q, true) || it.address.contains(q, true) }
         .map { RoutePlace(it.name, it.lat, it.lon, it.address) }
         .toList()
+    var showHotelMap by remember(city.id) { mutableStateOf(false) }
 
     SectionCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -253,6 +256,11 @@ private fun RouteCityContent(
         if (cityHotels.isEmpty()) {
             Text(loc["route_hotels_empty"], style = MaterialTheme.typography.bodySmall, color = Ink3)
         } else {
+            TextButton(onClick = { showHotelMap = true }, contentPadding = PaddingValues(vertical = 2.dp)) {
+                Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Brand, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(loc["hotel_show_map"], color = BrandDark, fontWeight = FontWeight.Bold)
+            }
             cityHotels.forEachIndexed { index, place ->
                 PlaceRow(place, code = place.code, loc = loc, icon = "🏨", onOpenPlace = onOpenPlace)
                 if (index != cityHotels.lastIndex) HorizontalDivider(color = Line)
@@ -263,6 +271,25 @@ private fun RouteCityContent(
             Spacer(Modifier.height(12.dp))
             Text(loc["route_no_result"], style = MaterialTheme.typography.bodyMedium, color = Ink3)
         }
+    }
+
+    if (showHotelMap) {
+        OpenStreetMapHotelsDialog(
+            loc = loc,
+            title = loc["hotel_map_title"],
+            hotels = cityHotels.mapIndexed { index, place ->
+                OpenStreetMapPoint(
+                    id = "${city.id}-$index-${place.name}",
+                    title = place.name,
+                    subtitle = place.code,
+                    lat = place.lat,
+                    lon = place.lon
+                )
+            },
+            fallbackLatitude = city.lat,
+            fallbackLongitude = city.lon,
+            onDismiss = { showHotelMap = false }
+        )
     }
 }
 

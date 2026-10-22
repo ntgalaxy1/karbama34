@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Visibility
@@ -59,6 +60,7 @@ import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Hotel
+import com.karbama.app.data.routes.RouteCity
 import com.karbama.app.data.routes.RoutesRepo
 import com.karbama.app.data.sample.Catalog
 import com.karbama.app.ui.components.*
@@ -673,7 +675,7 @@ private fun AdminTabs(loc: Loc, tab: Int, peopleCount: Int, onTab: (Int) -> Unit
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFECF3F6))
+            .background(GraphiteLight)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -684,7 +686,7 @@ private fun AdminTabs(loc: Loc, tab: Int, peopleCount: Int, onTab: (Int) -> Unit
                     .weight(1f)
                     .then(if (on) Modifier.shadow(3.dp, RoundedCornerShape(12.dp)) else Modifier)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (on) Color.White else Color.Transparent)
+                    .background(if (on) CardBg else Color.Transparent)
                     .clickable { onTab(i) }
                     .padding(vertical = 10.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center
@@ -738,8 +740,8 @@ private fun AdmSearch(value: String, onChange: (String) -> Unit, placeholder: St
         shape = RoundedCornerShape(16.dp),
         textStyle = MaterialTheme.typography.bodyMedium,
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = Color.White,
-            focusedContainerColor = Color.White,
+            unfocusedContainerColor = FieldBg,
+            focusedContainerColor = FieldBg,
             focusedBorderColor = Brand,
             unfocusedBorderColor = Line
         )
@@ -752,8 +754,8 @@ private fun Mini(text: String) {
     Box(
         Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFF6FAFB))
-            .border(1.dp, Color(0xFFEDF3F6), RoundedCornerShape(8.dp))
+            .background(FieldBg)
+            .border(1.dp, Line, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Text(text, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Ink2, maxLines = 1)
@@ -944,10 +946,10 @@ private enum class ChipTone { Plain, Amber, Green }
 private fun StatusChip(text: String, selected: Boolean, tone: ChipTone, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     val (bg, line, fg) = when {
-        selected -> Triple(Brush.linearGradient(listOf(Color(0xFFE2FBF3), Color(0xFFD6F2EC))), Brand.copy(alpha = 0.42f), BrandDark)
+        selected -> Triple(Brush.linearGradient(listOf(BrandLight, BrandTint2)), Brand.copy(alpha = 0.42f), BrandDark)
         tone == ChipTone.Amber -> Triple(Brush.linearGradient(listOf(AccentLight, AccentLight)), SunLine, WarnText)
-        tone == ChipTone.Green -> Triple(Brush.linearGradient(listOf(OkLight, OkLight)), Color(0xFFA7F3D0), OkDeep)
-        else -> Triple(Brush.linearGradient(listOf(Color.White, Color(0xFFF6FAFB))), Line, Ink2)
+        tone == ChipTone.Green -> Triple(Brush.linearGradient(listOf(OkLight, OkLight)), Ok.copy(alpha = 0.55f), OkDeep)
+        else -> Triple(Brush.linearGradient(listOf(CardBg, FieldBg)), Line, Ink2)
     }
     Box(
         Modifier
@@ -1513,7 +1515,7 @@ private fun AdmField(
                         }
                         .shadow(3.dp, shape, ambientColor = Color(0xFF0C2632), spotColor = Color(0xFF0C2632))
                         .clip(shape)
-                        .background(Color.White)
+                        .background(FieldBg)
                         .border(
                             1.dp,
                             when {
@@ -1585,7 +1587,7 @@ private fun DemoChip(text: String, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(shape)
-            .background(Color.White)
+            .background(CardBg)
             .border(1.dp, Line, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -1602,7 +1604,7 @@ private fun TfaKey(text: String, shown: Boolean, label: String, onToggle: () -> 
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Color(0xFFF6FAFB))
+            .background(FieldBg)
             .border(1.dp, Line, shape)
             .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1632,7 +1634,7 @@ private fun AdmGhostButton(text: String, onClick: () -> Unit) {
             .heightIn(min = 52.dp)
             .shadow(4.dp, shape, ambientColor = Color(0xFF0F1F2B), spotColor = Color(0xFF0F1F2B))
             .clip(shape)
-            .background(Color.White)
+            .background(CardBg)
             .border(1.dp, Line.copy(alpha = 0.8f), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -1947,13 +1949,13 @@ private fun AdminSettingsTab(
                     .fillMaxWidth()
                     .shadow(16.dp, shape)
                     .clip(shape)
-                    .background(Color.White)
+                    .background(CardBg)
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null,
                         onClick = {}
                     )
-                    .background(Color.White)
+                    .background(CardBg)
                     .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -2021,8 +2023,9 @@ fun HotelManagerCard(
     onDelete: (Hotel) -> Unit
 ) {
     val context = LocalContext.current
-    val cities = remember(context, loc.code) {
-        RoutesRepo.load(context, "TR")?.cities?.map { it.id to it.name(loc.code) } ?: emptyList()
+    // Keep the full city object so a new hotel's map opens around its selected city.
+    val cities = remember(context) {
+        RoutesRepo.load(context, "TR")?.cities ?: emptyList()
     }
     var showEditor by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(Hotel()) }
@@ -2095,7 +2098,7 @@ fun HotelManagerCard(
 private fun HotelEditorDialog(
     loc: Loc,
     initial: Hotel,
-    cities: List<Pair<String, String>>,
+    cities: List<RouteCity>,
     onDismiss: () -> Unit,
     onSave: (Hotel) -> Unit
 ) {
@@ -2104,6 +2107,8 @@ private fun HotelEditorDialog(
     var address by remember(initial.id) { mutableStateOf(initial.address) }
     var lat by remember(initial.id) { mutableStateOf(initial.lat.takeIf { it != 0.0 }?.toString().orEmpty()) }
     var lon by remember(initial.id) { mutableStateOf(initial.lon.takeIf { it != 0.0 }?.toString().orEmpty()) }
+    var showMapPicker by remember { mutableStateOf(false) }
+    val selectedCity = cities.firstOrNull { it.id == cityId }
     val latValue = lat.trim().replace(',', '.').toDoubleOrNull()
     val lonValue = lon.trim().replace(',', '.').toDoubleOrNull()
     val valid = name.trim().isNotBlank() && cityId.isNotBlank() &&
@@ -2118,15 +2123,27 @@ private fun HotelEditorDialog(
                 KbField(value = name, onValueChange = { name = it }, label = loc["hotel_name"], required = true)
                 PickerField(
                     label = loc["route_city"],
-                    value = cities.firstOrNull { it.first == cityId }?.second ?: cityId,
+                    value = selectedCity?.name(loc.code) ?: cityId,
                     placeholder = loc["route_choose_city"],
-                    options = cities,
+                    options = cities.map { it.id to it.name(loc.code) },
                     onSelect = { cityId = it },
                     searchable = true,
                     searchPlaceholder = loc["route_city_search"],
+                    matcher = { id, query ->
+                        cities.firstOrNull { it.id == id }?.names?.values?.any { it.contains(query, ignoreCase = true) } == true
+                    },
                     required = true
                 )
                 KbField(value = address, onValueChange = { address = it }, label = loc["hotel_address"], singleLine = false, minLines = 2)
+                OutlinedButton(
+                    onClick = { showMapPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Brand)
+                    Spacer(Modifier.width(6.dp))
+                    Text(loc["hotel_pick_map"], color = BrandDark, fontWeight = FontWeight.Bold)
+                }
                 KbField(value = lat, onValueChange = { lat = it }, label = loc["hotel_lat"], placeholder = "41.0082", keyboardType = KeyboardType.Decimal, required = true)
                 KbField(value = lon, onValueChange = { lon = it }, label = loc["hotel_lon"], placeholder = "28.9784", keyboardType = KeyboardType.Decimal, required = true)
                 if (!valid && (name.isNotBlank() || cityId.isNotBlank() || lat.isNotBlank() || lon.isNotBlank())) {
@@ -2144,6 +2161,20 @@ private fun HotelEditorDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(loc["del_no"], color = Ink2) } }
     )
+
+    if (showMapPicker) {
+        OpenStreetMapPickerDialog(
+            loc = loc,
+            initialLatitude = latValue?.takeIf { it in -90.0..90.0 } ?: selectedCity?.lat ?: 39.0,
+            initialLongitude = lonValue?.takeIf { it in -180.0..180.0 } ?: selectedCity?.lon ?: 35.0,
+            onDismiss = { showMapPicker = false },
+            onConfirm = { pickedLat, pickedLon ->
+                lat = "%.6f".format(java.util.Locale.US, pickedLat)
+                lon = "%.6f".format(java.util.Locale.US, pickedLon)
+                showMapPicker = false
+            }
+        )
+    }
 }
 
 /** خط کارت خلاصه‌ی دمو: .small.muted با line-height ۲٫۱ و مقدار پررنگ */

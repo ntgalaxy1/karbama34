@@ -191,7 +191,7 @@ fun UndertakingDocument(
                     .widthIn(max = 560.dp)
                     .aspectRatio(1f / 1.414f)          // نسبت دقیق A4
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White)
+                    .background(CardBg)
                     .border(1.dp, Line, RoundedCornerShape(4.dp))
             ) {
                 Column(
@@ -370,7 +370,7 @@ fun UndertakingDocument(
                             .fillMaxWidth()
                             .height(170.dp)
                             .clip(RoundedCornerShape(9.dp))
-                            .background(Color.White)
+                            .background(FieldBg)
                             .border(1.4.dp, Line, RoundedCornerShape(9.dp))
                     ) {
                         if (readOnly) {
@@ -502,7 +502,7 @@ private fun PaperInputField(
         shape = RoundedCornerShape(8.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Surface,
-            focusedContainerColor = Color.White,
+            focusedContainerColor = FieldBg,
             focusedBorderColor = Brand,
             unfocusedBorderColor = Line
         )

@@ -134,7 +134,7 @@ private fun LanguageRow(code: String, onClick: () -> Unit) {
                         "tr" -> "Türkiye'nin iş ilanları"
                         "en" -> "Job listings in Türkiye"
                         "ar" -> "إعلانات الوظائف في تركيا"
-                        else -> "آگهی‌های استخدام ترکیه"
+                        else -> "آگهی های استخدام"
                     },
                     style = MaterialTheme.typography.bodySmall
                 )
