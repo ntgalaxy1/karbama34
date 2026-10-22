@@ -513,8 +513,7 @@ private fun MainShell(
                         onLoggedOut()
                     },
                     adminEmail = vm.adminEmail,                                                  // v51
-                    onChangeAdminPassword = { p, cur, cb -> vm.changeAdminPassword(p, cur, cb) },
-                    onCreateCollaborator = { username, password -> vm.createCollaborator(username, password) }
+                    onChangeAdminPassword = { p, cur, cb -> vm.changeAdminPassword(p, cur, cb) }
                 )
 
                 // #35: صفحه‌ی اصلی همان صفحه‌ی قبلی است؛ فقط بخش آگهی‌ها

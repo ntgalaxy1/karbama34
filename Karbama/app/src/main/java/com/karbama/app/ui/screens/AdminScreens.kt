@@ -248,8 +248,7 @@ fun AdminContent(
     onExit: () -> Unit,
     initialTab: Int = 0,                                     // v51: برای رندر آزمایشی تب‌ها
     adminEmail: String = "",                                 // v51: «یوزرنیم مدیر» = ایمیل Firebase
-    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") },
-    onCreateCollaborator: (String, String) -> Unit = { _, _ -> }
+    onChangeAdminPassword: (String, String?, (String) -> Unit) -> Unit = { _, _, cb -> cb("fail") }
 ) {
     SystemBars(darkIcons = false)
 
@@ -334,7 +333,8 @@ fun AdminContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item { AdminTabs(loc, tab, applicants.size) { tab = it } }
-                item { CollaboratorProvisionCard(onCreateCollaborator) }
+                // Collaborator provisioning is intentionally held for a later update.
+                // The implementation remains below, but this release exposes no UI entry point.
                 // ---------- آمار (فقط در تب آگهی‌ها، مثل دمو) ----------
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

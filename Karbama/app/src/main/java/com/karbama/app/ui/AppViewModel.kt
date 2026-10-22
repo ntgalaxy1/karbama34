@@ -38,6 +38,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 
+// v10.0.1 ships Firebase Auth for jobseekers, while the collaborator rollout is
+// deliberately deferred. Keep the source paths intact for the later update, but
+// prevent an undeployed collaborator backend from becoming an app entry point.
+private const val COLLABORATOR_WORKSPACE_ENABLED = false
+
 /**
  * تنها ViewModel برنامه — نگه‌دارنده‌ی وضعیت مشترک بین صفحه‌ها.
  */
@@ -115,7 +120,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var collaboratorUid by mutableStateOf<String?>(null)
         private set
 
-    val isCollaborator: Boolean get() = collaboratorUid != null
+    val isCollaborator: Boolean get() = COLLABORATOR_WORKSPACE_ENABLED && collaboratorUid != null
 
     var busy by mutableStateOf(false)
         private set
@@ -143,10 +148,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val user = Service.auth?.currentUser ?: return
         if (AdminGate.isAdminAccount()) { adminMode = AdminMode.LIVE; prefs.adminMode = AdminMode.LIVE; return }
         if (runCatching { user.getIdToken(true).await().claims["karbamaRole"] as? String }.getOrNull() == "collaborator") {
-            collaboratorUid = user.uid
-            myProfile = null
+            // The collaborator workspace is deferred; do not expose an account
+            // whose provisioning backend has intentionally not been deployed.
+            identityRepo.signOut()
+            collaboratorUid = null
             prefs.clearMyProfile()
-            prefs.registered = true
+            prefs.registered = false
             adminMode = AdminMode.NONE
             prefs.adminMode = AdminMode.NONE
             return
@@ -592,8 +599,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val signed = runCatching { withContext(Dispatchers.IO) { identityRepo.signIn(u, pass) } }.getOrNull()
             if (signed == null) { busy = false; onResult(LoginOutcome.FAIL); return@launch }
             if (signed.role == IdentityRepository.Role.COLLABORATOR) {
-                collaboratorUid = signed.user.uid; myProfile = null; prefs.clearMyProfile(); prefs.registered = true; adminMode = AdminMode.NONE; prefs.adminMode = AdminMode.NONE
-                busy = false; onResult(LoginOutcome.USER); return@launch
+                // Held for the next update: no collaborator flow is available in v10.0.1.
+                identityRepo.signOut()
+                collaboratorUid = null
+                busy = false
+                onResult(LoginOutcome.FAIL)
+                return@launch
             }
             val profile = withContext(Dispatchers.IO) { applicantRepo.myProfile(signed.user.uid) }
             busy = false
