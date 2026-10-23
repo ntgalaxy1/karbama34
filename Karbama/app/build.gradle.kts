@@ -26,7 +26,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.karbama.app"
+        // Play Console reserves this new package for the separate Play listing.
+        // Keep namespace/Kotlin packages stable to avoid a broad source refactor.
+        applicationId = "com.ntgalaxy.karbama"
         minSdk = 24
         targetSdk = 36
         // v10.0.1 is the permanent-signing baseline. Version codes stay monotonic

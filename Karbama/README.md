@@ -63,7 +63,7 @@
 ### ۳-۱. ساخت پروژه
 1. به [console.firebase.google.com](https://console.firebase.google.com) برو و یک پروژه بساز (مثلاً `karbama`).
 2. در همان پروژه: **Add app → Android**
-   - Package name: `com.karbama.app`  ← دقیقاً همین
+   - Package name: `com.ntgalaxy.karbama`  ← دقیقاً همین
    - نام مستعار: Karbama
    - اثر انگشت SHA-1 لازم **نیست** (چون فقط از ورود ناشناس و ایمیل/رمز استفاده می‌کنیم).
 3. فایل `google-services.json` را دانلود کن و در پوشه‌ی **`app/`** بگذار:
@@ -180,7 +180,7 @@ signingConfigs {
 buildTypes { release { signingConfig = signingConfigs.getByName("release") } }
 ```
 
-و `com.karbama.app` را در Google Play Console رزرو کن (نام پکیج را بعداً نمی‌شود عوض کرد).
+و `com.ntgalaxy.karbama` را در Google Play Console رزرو کن (نام پکیج را بعداً نمی‌شود عوض کرد).
 
 ---
 

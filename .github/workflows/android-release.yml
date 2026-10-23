@@ -167,7 +167,7 @@ jobs:
           cat > release-notes.md <<EOF
           ## Android APK
 
-          - Package: com.karbama.app
+          - Package: com.ntgalaxy.karbama
           - Version: ${RELEASE_TAG#v}
           - Size: ${BYTES} bytes
           - MD5: ${MD5}

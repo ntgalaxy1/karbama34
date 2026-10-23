@@ -14,7 +14,7 @@
 1. در صفحه‌ی پروژه، روی آیکون **Android** بزن.
 2. **Android package name** را دقیقاً این بگذار:
    ```
-   com.karbama.app
+   com.ntgalaxy.karbama
    ```
    (اسم دلخواه نگذار — باید با `applicationId` برنامه یکی باشد.)
 3. Nickname و SHA-1 لازم نیست → **Register app**.

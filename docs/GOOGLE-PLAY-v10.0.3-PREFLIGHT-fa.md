@@ -30,7 +30,7 @@
 |---|---|---|
 | حساب توسعه‌دهنده شخصی است یا سازمانی، و identity/device verification آن کامل است؟ | در Play Console، Account details و verification status را بررسی و روش پرداخت ثبت‌نام یک‌باره را تکمیل کنید. | نوع حساب و شرایط تست/دسترسی production را تعیین می‌کند. |
 | آیا backup خارج از GitHub از signer دائمی قابل بازگردانی است؟ | مالک کلید، محل نگهداری رمزگذاری‌شده، alias و روش بازگردانی را **بدون ارسال secret در chat/Git** آزمایش و ثبت داخلی کند. | پس از enrollment در Play، از دست دادن upload key مسیر بازیابی و انتشارهای بعدی را دشوار می‌کند. |
-| آیا package name `com.karbama.app` در حساب صحیح Play Console ثبت می‌شود؟ | پیش از upload با همان حساب تأیید کنید. | package name پس از ثبت قابل انتقال/تغییر ساده نیست. |
+| آیا package name `com.ntgalaxy.karbama` در حساب صحیح Play Console ثبت شده است؟ | بله؛ پیش از upload از همان app record استفاده کنید. | package name پس از ثبت قابل انتقال/تغییر ساده نیست. |
 
 ## ۳) کاربرگ Privacy Policy و Data Safety — مبنای بازبینی، نه پاسخ نهایی Console
 
