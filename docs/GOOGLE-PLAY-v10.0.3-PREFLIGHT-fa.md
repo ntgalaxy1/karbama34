@@ -63,7 +63,7 @@
 2. هدف هر دسته داده، مبنای قانونی/رضایت، دریافت‌کنندگان (مدیران، کارفرمایان، Firebase/Google و هر payment provider)، محل پردازش و انتقال بین‌المللی احتمالی.
 3. retention دقیق: پرونده، مدرک، تعهدنامه/امضا، رسید/سوابق مالی، گزارش امنیتی و backupها؛ همچنین فرایند استثناهای قانونی.
 4. دستور روشنِ درخواست دسترسی/اصلاح/حذف، روش احراز هویت درخواست‌کننده، زمان پاسخ، اعتراض و مرجع مرتبط.
-5. URL عمومی HTTPS و بدون نیاز به login. همان URL باید در Play Console و داخل خود اپ نمایش داده شود. در source فعلی URL نهایی یا لینک in-app قرار نگرفته، زیرا مالک هنوز URL/متن تأییدشده نداده است.
+5. URL عمومی HTTPS و بدون نیاز به login. متن و URLهای پیشنهادی GitHub Pages اکنون در `docs/privacy-policy.html` و `docs/delete-account.html` آماده شده‌اند: `https://ntgalaxy1.github.io/karbama34/privacy-policy.html` و `https://ntgalaxy1.github.io/karbama34/delete-account.html`. تا Pages فعال نشده و هر دو URL در مرورگر بدون login باز نشده‌اند، آن‌ها را در Play Console وارد نکنید. لینک in-app Privacy Policy هنوز باید در یک patch جداگانه اضافه شود.
 
 **نتیجه:** این سند را در Play Console به‌عنوان Privacy Policy paste نکنید و تا URL عمومی واقعی و متن بازبینی‌شده ندارید، پاسخ‌های Data Safety را final نکنید.
 
@@ -82,8 +82,8 @@
 
 | کار لازم | مسئول/پیش‌نیاز | وضعیت |
 |---|---|---|
-| یک صفحهٔ HTTPS عمومی برای «Account deletion request» بسازید، بدون الزام به نصب یا ورود به اپ | مالک محصول + hosting + متن حقوقی | مسدودکننده؛ URL هنوز داده نشده است. |
-| URL صفحهٔ حذف را در Play Console ثبت و در Privacy Policy/in-app link اعلام کنید | مالک Play Console | مسدودکننده |
+| یک صفحهٔ HTTPS عمومی برای «Account deletion request» بسازید، بدون الزام به نصب یا ورود به اپ | فایل محلی آماده است: `docs/delete-account.html` | در انتظار push و فعال‌سازی GitHub Pages؛ سپس URL را در مرورگر ناشناس بررسی کنید. |
+| URL صفحهٔ حذف را در Play Console ثبت و در Privacy Policy/in-app link اعلام کنید | مالک Play Console | پس از فعال‌شدن Pages: `https://ntgalaxy1.github.io/karbama34/delete-account.html`؛ لینک in-app Privacy Policy هنوز باید اضافه شود. |
 | Firestore rules این patch را deploy کنید | مدیر Firebase مجاز | هنوز deploy نشده؛ بدون آن دکمهٔ درخواست در live app کار نخواهد کرد. |
 | SOP مدیر برای ticketها تعیین کنید: احراز هویت، ثبت تصمیم retention، زمان پاسخ، اطلاع‌رسانی نتیجه | مالک حقوقی/عملیاتی | مسدودکننده؛ این patch هنوز فهرست/پردازش ticket در UI پنل مدیریت ندارد، پس فقط ابزار مجاز Firebase/Admin SDK نباید به‌عنوان فرایند نهایی بدون SOP استفاده شود. |
 | پس از تصمیم retention، داده‌های مشمول حذف را با ابزار مدیرِ دارای Admin SDK/Console به‌شکل ثبت‌شده حذف کنید: applicant profile، سه applicant file شناخته‌شده، likes، applications، `uniqueKeys` متعلق به UID و در صورت مجازبودن Firebase Auth identity | مدیر Firebase مجاز | به‌صورت خودکار در patch انجام نمی‌شود. |
