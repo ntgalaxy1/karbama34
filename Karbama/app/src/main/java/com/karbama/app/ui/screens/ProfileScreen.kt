@@ -1,5 +1,8 @@
 package com.karbama.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +43,9 @@ import com.karbama.app.ui.i18n.langFlag
 import com.karbama.app.ui.i18n.langLabel
 import com.karbama.app.ui.theme.*
 import com.karbama.app.util.WorldLanguages
+
+private const val PRIVACY_POLICY_URL =
+    "https://ntgalaxy1.github.io/karbama34/privacy-policy.html"
 
 @Composable
 fun ProfileContent(
@@ -65,6 +72,7 @@ fun ProfileContent(
     onRequestAccountDeletion: () -> Unit = {}
 ) {
     SystemBars(darkIcons = false)
+    val context = LocalContext.current
     var showUndertaking by remember { mutableStateOf(false) }
     var showDeletionConfirm by remember { mutableStateOf(false) }
 
@@ -423,6 +431,21 @@ fun ProfileContent(
                 }
                 Spacer(Modifier.height(16.dp))
                 ThemeModePicker(loc = loc, mode = themeMode, onChange = onThemeChange)
+                Spacer(Modifier.height(12.dp))
+                GhostButton(
+                    text = "🛡️ " + loc["privacy_policy"],
+                    icon = Icons.Filled.Security,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL))
+                        runCatching { context.startActivity(intent) }.onFailure {
+                            Toast.makeText(
+                                context,
+                                loc["privacy_policy_open_failed"],
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                )
                 Spacer(Modifier.height(4.dp))
             }
 
