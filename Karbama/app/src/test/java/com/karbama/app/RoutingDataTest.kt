@@ -72,6 +72,19 @@ class RoutingDataTest {
         println("ROUTES destinations: TR/AM/IQ/DE selectable; offline asset remains TR only OK")
     }
 
+    @Test fun nonTurkeyDestinationExplainsWhyOfflineRouteDataIsNotShown() {
+        val loc = Loc("fa")
+        rule.setContent {
+            CompositionLocalProvider(LocalLoc provides loc, LocalLayoutDirection provides LayoutDirection.Rtl) {
+                KarbamaTheme { RouteContent(loc, Applicant(firstName = "علی", destinationCountry = "DE")) }
+            }
+        }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("راهنمای مسیر هنوز آماده نیست").assertCountEquals(1)
+        rule.onAllNodesWithText("مقصد شما آلمان است.", substring = true).assertCountEquals(1)
+        println("ROUTES UI: Germany clearly reports that offline data is pending OK")
+    }
+
     @Test fun bundledHospitalsHaveNamedMappablePlacesForEveryTurkeyCity() {
         val tr = RoutesRepo.load(RuntimeEnvironment.getApplication(), "TR")!!
         val places = tr.cities.flatMap { city -> TurkeyHospitals.forCity(city.id) }

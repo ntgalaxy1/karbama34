@@ -6,6 +6,7 @@ import com.karbama.app.data.Service
 import com.karbama.app.data.local.LocalStore
 import com.karbama.app.data.model.EssentialAddress
 import com.karbama.app.data.model.EssentialAddressCategory
+import com.karbama.app.data.model.EssentialAddressSamples
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
@@ -13,11 +14,15 @@ import kotlinx.coroutines.tasks.await
 /**
  * نشانی‌های ضروری ترکیه.
  *
- * در Firebase، فهرست عمومی فقط خواندنی است و نوشتن آن با Firestore Rules به
- * مدیر اصلی محدود شده است. در demo همان contract با داده‌های نمونهٔ محلی اجرا
- * می‌شود تا UI هیچ مسیر جداگانه‌ای نداشته باشد.
+ * فهرست رسمیِ اولیه داخل APK است تا صفحه در یک Firebase collection تازه خالی
+ * نباشد. رکوردهای Firestore که مدیر اصلی ایجاد می‌کند، با همان ID می‌توانند
+ * هر مورد بسته‌بندی‌شده را جایگزین یا غیرفعال کنند؛ رکوردهای جدید مدیر نیز به
+ * فهرست افزوده می‌شوند. در demo همین داده‌ها به‌طور محلی و پایدار نگه‌داری
+ * می‌شوند.
  */
 class EssentialAddressRepository {
+    private val bundledAddresses: List<EssentialAddress> = EssentialAddressSamples.default()
+
     fun observeAddresses(): Flow<List<EssentialAddress>> {
         val db = Service.db ?: return LocalStore.essentialAddresses
         return kotlinx.coroutines.flow.callbackFlow {
@@ -25,14 +30,23 @@ class EssentialAddressRepository {
                 .orderBy("updatedAt", Query.Direction.DESCENDING)
                 .limit(500)
                 .addSnapshotListener { snapshot, error ->
+                    // A temporary offline/permission failure must not make emergency
+                    // contacts disappear. It never grants write access.
                     if (error != null) {
-                        trySend(emptyList())
+                        trySend(bundledAddresses)
                         return@addSnapshotListener
                     }
-                    trySend(snapshot?.documents?.map { it.toEssentialAddress() } ?: emptyList())
+                    val remote = snapshot?.documents?.map { it.toEssentialAddress() } ?: emptyList()
+                    trySend(mergeWithBundled(remote))
                 }
             awaitClose { registration.remove() }
         }
+    }
+
+    /** A Firestore row with the same stable ID replaces the bundled row. */
+    private fun mergeWithBundled(remote: List<EssentialAddress>): List<EssentialAddress> {
+        val remoteIds = remote.asSequence().map { it.id }.toSet()
+        return remote + bundledAddresses.filterNot { it.id in remoteIds }
     }
 
     suspend fun save(address: EssentialAddress): Result<Unit> {
@@ -91,6 +105,16 @@ class EssentialAddressRepository {
             LocalStore.deleteEssentialAddress(addressId)
             return Result.success(Unit)
         }
-        return runCatching { db.collection(Config.COL_ESSENTIAL_ADDRESSES).document(addressId).delete().await() }
+        return runCatching {
+            val bundled = bundledAddresses.firstOrNull { it.id == addressId }
+            if (bundled == null) {
+                db.collection(Config.COL_ESSENTIAL_ADDRESSES).document(addressId).delete().await()
+            } else {
+                // Keep an inactive override rather than deleting a non-existent
+                // bundled document, otherwise the default would immediately return.
+                save(bundled.copy(active = false)).getOrThrow()
+            }
+            Unit
+        }
     }
 }
