@@ -150,6 +150,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # A dry run has no public Release. Keep the signed APK private for the
+      # owner to install and click through before any later publication decision.
+      - name: Retain private owner-review APK
+        if: ${{ inputs.dry_run == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Karbama-${{ env.RELEASE_TAG }}-owner-review-apk
+          path: ${{ steps.asset.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Create GitHub Release and upload APK
         if: ${{ inputs.dry_run != true }}
         env:
