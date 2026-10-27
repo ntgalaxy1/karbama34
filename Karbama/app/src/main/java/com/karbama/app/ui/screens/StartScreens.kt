@@ -167,7 +167,7 @@ fun WelcomeScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(Color(0xFF088080), Color(0xFF0A7F91), Color(0xFF0A7F91))))
+                .background(HeaderBrush)
         ) {
             // دایره‌های تزئینی دمو (hero:before / hero:after)
             Box(

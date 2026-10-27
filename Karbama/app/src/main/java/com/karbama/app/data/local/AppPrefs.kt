@@ -4,6 +4,7 @@ import com.karbama.app.data.Config
 
 import android.content.Context
 import com.karbama.app.data.model.Applicant
+import com.karbama.app.data.model.EssentialAddress
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Undertaking
 import org.json.JSONArray
@@ -183,6 +184,20 @@ class AppPrefs(context: Context) {
         }.getOrNull()
     }
 
+    fun saveLocalEssentialAddresses(list: List<EssentialAddress>) {
+        val arr = JSONArray()
+        list.forEach { arr.put(it.toJson()) }
+        sp.edit().putString(K_LOCAL_ESSENTIAL_ADDRESSES, arr.toString()).apply()
+    }
+
+    fun localEssentialAddresses(): List<EssentialAddress>? {
+        val raw = sp.getString(K_LOCAL_ESSENTIAL_ADDRESSES, null) ?: return null
+        return runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map { jsonToEssentialAddress(arr.getJSONObject(it)) }
+        }.getOrNull()
+    }
+
     fun clearAll() {
         sp.edit().clear().apply()
     }
@@ -198,6 +213,7 @@ class AppPrefs(context: Context) {
         const val K_LIKED = "liked_jobs"
         const val K_LOCAL_JOBS = "local_jobs"
         const val K_LOCAL_APPLICANTS = "local_applicants"
+        const val K_LOCAL_ESSENTIAL_ADDRESSES = "local_essential_addresses"
         const val K_BROKER_FEE = "broker_fee"
         const val K_BROKER_CARD = "broker_card"
         const val K_ADS_FEE = "ads_fee"            // #34
@@ -359,6 +375,24 @@ fun jsonToApplicant(o: JSONObject): Applicant = Applicant(
     payReference = o.optString("payReference", ""),
     payReceiptUrl = o.optString("payReceiptUrl", ""),
     undertaking = o.optJSONObject("undertaking")?.let { jsonToUndertaking(it) }
+)
+
+fun EssentialAddress.toJson(): JSONObject = JSONObject().apply {
+    put("id", id); put("countryCode", countryCode); put("cityId", cityId); put("category", category)
+    put("title", title); put("titleTr", titleTr); put("address", address); put("phone", phone)
+    put("hours", hours); put("description", description)
+    if (lat != null) put("lat", lat); if (lon != null) put("lon", lon)
+    put("active", active); put("ownerUid", ownerUid); put("updatedAt", updatedAt)
+}
+
+fun jsonToEssentialAddress(o: JSONObject): EssentialAddress = EssentialAddress(
+    id = o.optString("id"), countryCode = o.optString("countryCode", "TR"),
+    cityId = o.optString("cityId", "nationwide"), category = o.optString("category", "other"),
+    title = o.optString("title"), titleTr = o.optString("titleTr"), address = o.optString("address"),
+    phone = o.optString("phone"), hours = o.optString("hours"), description = o.optString("description"),
+    lat = if (o.has("lat") && !o.isNull("lat")) o.optDouble("lat") else null,
+    lon = if (o.has("lon") && !o.isNull("lon")) o.optDouble("lon") else null,
+    active = o.optBoolean("active", true), ownerUid = o.optString("ownerUid"), updatedAt = o.optLong("updatedAt")
 )
 
 private fun JSONArray?.toStringList(): List<String> {

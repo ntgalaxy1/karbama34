@@ -5,6 +5,7 @@ import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.JobMedia
 import com.karbama.app.data.model.Hotel
+import com.karbama.app.data.model.EssentialAddress
 import com.karbama.app.data.model.MediaType
 import com.karbama.app.data.model.Undertaking
 
@@ -64,6 +65,41 @@ fun DocumentSnapshot.toHotel(): Hotel = Hotel(
     lon = getDouble("lon") ?: 0.0,
     ownerUid = getString("ownerUid") ?: "",
     active = getBoolean("active") ?: true,
+    updatedAt = getLong("updatedAt") ?: 0L
+)
+
+fun EssentialAddress.toMap(): Map<String, Any> = buildMap {
+    put("countryCode", countryCode)
+    put("cityId", cityId)
+    put("category", category)
+    put("title", title)
+    put("titleTr", titleTr)
+    put("address", address)
+    put("phone", phone)
+    put("hours", hours)
+    put("description", description)
+    lat?.let { put("lat", it) }
+    lon?.let { put("lon", it) }
+    put("active", active)
+    put("ownerUid", ownerUid)
+    put("updatedAt", updatedAt)
+}
+
+fun DocumentSnapshot.toEssentialAddress(): EssentialAddress = EssentialAddress(
+    id = id,
+    countryCode = getString("countryCode") ?: "TR",
+    cityId = getString("cityId") ?: "nationwide",
+    category = getString("category") ?: "other",
+    title = getString("title") ?: "",
+    titleTr = getString("titleTr") ?: "",
+    address = getString("address") ?: "",
+    phone = getString("phone") ?: "",
+    hours = getString("hours") ?: "",
+    description = getString("description") ?: "",
+    lat = getDouble("lat"),
+    lon = getDouble("lon"),
+    active = getBoolean("active") ?: true,
+    ownerUid = getString("ownerUid") ?: "",
     updatedAt = getLong("updatedAt") ?: 0L
 )
 

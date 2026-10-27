@@ -4,8 +4,8 @@ import androidx.compose.runtime.compositionLocalOf
 import com.karbama.app.data.sample.Catalog
 
 /**
- * چندزبانه: فارسی، ترکی استانبولی، انگلیسی.
- * برای اضافه‌کردن یک متن جدید کافی است در هر سه دیکشنری یک کلید بگذاری.
+ * چندزبانه: فارسی، ترکی استانبولی، انگلیسی و عربی.
+ * برای اضافه‌کردن یک متن جدید کافی است در هر چهار دیکشنری یک کلید بگذاری.
  */
 class Loc(val code: String) {
 
@@ -375,6 +375,7 @@ private val PERSIAN = mapOf(
 
     // تب‌ها
     "tab_jobs" to "آگهی‌ها",
+    "tab_addresses" to "آدرس‌ها",
     "tab_profile" to "پروفایل من",
     "tab_admin" to "مدیریت",
     /* ---- ارتباط با ما ---- */
@@ -445,6 +446,22 @@ private val PERSIAN = mapOf(
     "language" to "زبان برنامه",
     "privacy_policy" to "سیاست حفظ حریم خصوصی",
     "privacy_policy_open_failed" to "صفحهٔ سیاست حریم خصوصی باز نشد. مرورگر یا اتصال اینترنت را بررسی کنید.",
+    // v10.0.4 — Essential Addresses
+    "essential_title" to "آدرس‌های ضروری ترکیه",
+    "essential_subtitle" to "شماره‌ها و نشانی‌های منتخب؛ اطلاعات رسمی را پیش از مراجعه بررسی کنید.",
+    "essential_search" to "جست‌وجوی نام، نشانی یا شماره…",
+    "essential_filter_category" to "دسته‌بندی", "essential_filter_city" to "شهر یا محدوده",
+    "essential_all" to "همه", "essential_all_cities" to "همه شهرها", "essential_nationwide" to "سراسری ترکیه",
+    "essential_category_immigration" to "اقامت و مهاجرت", "essential_category_health" to "درمان",
+    "essential_category_legal" to "حقوقی و کار", "essential_category_transport" to "حمل‌ونقل", "essential_category_other" to "سایر",
+    "essential_empty" to "نشانی پیدا نشد", "essential_empty_hint" to "فیلتر یا عبارت جست‌وجو را تغییر دهید.", "essential_map" to "نقشه",
+    "essential_manager" to "مدیریت آدرس‌های ضروری", "essential_manager_hint" to "این داده‌های عمومی فقط توسط مدیر اصلی اضافه، ویرایش یا حذف می‌شوند.",
+    "essential_add" to "افزودن نشانی ضروری", "essential_edit" to "ویرایش نشانی ضروری", "essential_delete" to "حذف نشانی ضروری",
+    "essential_delete_hint" to "«{0}» حذف شود؟", "essential_manager_empty" to "هنوز نشانی ضروری ثبت نشده است.",
+    "essential_name" to "نام فارسی یا عمومی", "essential_name_tr" to "نام ترکی (اختیاری)", "essential_city_id" to "شهر یا محدوده",
+    "essential_hours" to "ساعات پاسخ‌گویی", "essential_description" to "توضیح", "essential_lat" to "عرض جغرافیایی (اختیاری)", "essential_lon" to "طول جغرافیایی (اختیاری)",
+    "essential_active" to "نمایش در فهرست عمومی", "essential_invalid_coordinates" to "برای نقشه، هر دو مختصات معتبر را وارد کنید یا هر دو را خالی بگذارید.",
+    "essential_save_failed" to "ذخیره یا حذف نشانی ضروری انجام نشد.",
     "profile_not_registered" to "هنوز ثبت‌نام نکرده‌اید",
     "go_register" to "ثبت‌نام می‌کنم",
     "edit_profile_title" to "ویرایش پروفایل",
@@ -918,6 +935,7 @@ private val TURKISH = mapOf(
     "cond_weekend" to "Hafta sonu tatil",
 
     "tab_jobs" to "İlanlar",
+    "tab_addresses" to "Adresler",
     "tab_profile" to "Profilim",
     "tab_admin" to "Yönetim",
     /* ---- bize ulaşın ---- */
@@ -987,6 +1005,22 @@ private val TURKISH = mapOf(
     "language" to "Uygulama dili",
     "privacy_policy" to "Gizlilik Politikası",
     "privacy_policy_open_failed" to "Gizlilik Politikası açılamadı. Tarayıcınızı veya internet bağlantınızı kontrol edin.",
+    // v10.0.4 — Essential Addresses
+    "essential_title" to "Türkiye'de gerekli adresler",
+    "essential_subtitle" to "Seçilmiş telefonlar ve adresler; gitmeden önce resmî bilgileri doğrulayın.",
+    "essential_search" to "Ad, adres veya telefon ara…",
+    "essential_filter_category" to "Kategori", "essential_filter_city" to "Şehir veya bölge",
+    "essential_all" to "Tümü", "essential_all_cities" to "Tüm şehirler", "essential_nationwide" to "Türkiye geneli",
+    "essential_category_immigration" to "İkamet ve göç", "essential_category_health" to "Sağlık",
+    "essential_category_legal" to "Hukuk ve çalışma", "essential_category_transport" to "Ulaşım", "essential_category_other" to "Diğer",
+    "essential_empty" to "Adres bulunamadı", "essential_empty_hint" to "Filtreyi veya arama metnini değiştirin.", "essential_map" to "Harita",
+    "essential_manager" to "Gerekli adresleri yönet", "essential_manager_hint" to "Bu genel bilgiler yalnızca ana yönetici tarafından eklenebilir, düzenlenebilir veya silinebilir.",
+    "essential_add" to "Gerekli adres ekle", "essential_edit" to "Gerekli adresi düzenle", "essential_delete" to "Gerekli adresi sil",
+    "essential_delete_hint" to "“{0}” silinsin mi?", "essential_manager_empty" to "Henüz gerekli bir adres girilmedi.",
+    "essential_name" to "Genel veya Farsça ad", "essential_name_tr" to "Türkçe ad (isteğe bağlı)", "essential_city_id" to "Şehir veya bölge",
+    "essential_hours" to "Hizmet saatleri", "essential_description" to "Açıklama", "essential_lat" to "Enlem (isteğe bağlı)", "essential_lon" to "Boylam (isteğe bağlı)",
+    "essential_active" to "Genel listede göster", "essential_invalid_coordinates" to "Harita için iki geçerli koordinatı girin veya ikisini de boş bırakın.",
+    "essential_save_failed" to "Gerekli adres kaydedilemedi veya silinemedi.",
     "profile_not_registered" to "Henüz kayıt olmadınız",
     "go_register" to "Kayıt olayım",
     "edit_profile_title" to "Profili düzenle",
@@ -1459,6 +1493,7 @@ private val ENGLISH = mapOf(
     "cond_weekend" to "Weekends off",
 
     "tab_jobs" to "Jobs",
+    "tab_addresses" to "Addresses",
     "tab_profile" to "My profile",
     "tab_admin" to "Admin",
     /* ---- contact us ---- */
@@ -1528,6 +1563,22 @@ private val ENGLISH = mapOf(
     "language" to "App language",
     "privacy_policy" to "Privacy Policy",
     "privacy_policy_open_failed" to "The Privacy Policy could not be opened. Check your browser or internet connection.",
+    // v10.0.4 — Essential Addresses
+    "essential_title" to "Essential addresses in Türkiye",
+    "essential_subtitle" to "Selected contact points; confirm official information before visiting.",
+    "essential_search" to "Search name, address, or phone…",
+    "essential_filter_category" to "Category", "essential_filter_city" to "City or area",
+    "essential_all" to "All", "essential_all_cities" to "All cities", "essential_nationwide" to "Nationwide Türkiye",
+    "essential_category_immigration" to "Residence and immigration", "essential_category_health" to "Health",
+    "essential_category_legal" to "Legal and work", "essential_category_transport" to "Transport", "essential_category_other" to "Other",
+    "essential_empty" to "No address found", "essential_empty_hint" to "Change the filter or search text.", "essential_map" to "Map",
+    "essential_manager" to "Manage essential addresses", "essential_manager_hint" to "Only the main administrator can add, edit, or delete this public information.",
+    "essential_add" to "Add essential address", "essential_edit" to "Edit essential address", "essential_delete" to "Delete essential address",
+    "essential_delete_hint" to "Delete “{0}”?", "essential_manager_empty" to "No essential address has been added yet.",
+    "essential_name" to "Public or Persian name", "essential_name_tr" to "Turkish name (optional)", "essential_city_id" to "City or area",
+    "essential_hours" to "Service hours", "essential_description" to "Description", "essential_lat" to "Latitude (optional)", "essential_lon" to "Longitude (optional)",
+    "essential_active" to "Show in public list", "essential_invalid_coordinates" to "For a map, enter two valid coordinates or leave both blank.",
+    "essential_save_failed" to "The essential address could not be saved or deleted.",
     "profile_not_registered" to "You have not registered yet",
     "go_register" to "Register now",
     "edit_profile_title" to "Edit profile",
@@ -2036,6 +2087,7 @@ private val ARABIC = mapOf(
     "cond_meal" to "طعام ومواصلات",
     "cond_weekend" to "العطلة نهاية الأسبوع",
     "tab_jobs" to "الإعلانات",
+    "tab_addresses" to "العناوين",
     "tab_profile" to "ملفي الشخصي",
     "tab_admin" to "الإدارة",
     "tab_contact" to "تواصل معنا",
@@ -2101,6 +2153,22 @@ private val ARABIC = mapOf(
     "language" to "لغة التطبيق",
     "privacy_policy" to "سياسة الخصوصية",
     "privacy_policy_open_failed" to "تعذر فتح سياسة الخصوصية. تحقق من المتصفح أو اتصال الإنترنت.",
+    // v10.0.4 — Essential Addresses
+    "essential_title" to "العناوين الضرورية في تركيا",
+    "essential_subtitle" to "جهات اتصال وعناوين مختارة؛ تحقق من المعلومات الرسمية قبل الزيارة.",
+    "essential_search" to "ابحث بالاسم أو العنوان أو الهاتف…",
+    "essential_filter_category" to "الفئة", "essential_filter_city" to "المدينة أو المنطقة",
+    "essential_all" to "الكل", "essential_all_cities" to "كل المدن", "essential_nationwide" to "جميع أنحاء تركيا",
+    "essential_category_immigration" to "الإقامة والهجرة", "essential_category_health" to "الصحة",
+    "essential_category_legal" to "القانون والعمل", "essential_category_transport" to "المواصلات", "essential_category_other" to "أخرى",
+    "essential_empty" to "لم يتم العثور على عنوان", "essential_empty_hint" to "غيّر الفلتر أو نص البحث.", "essential_map" to "الخريطة",
+    "essential_manager" to "إدارة العناوين الضرورية", "essential_manager_hint" to "لا يستطيع إضافة هذه المعلومات العامة أو تعديلها أو حذفها إلا المدير الرئيسي.",
+    "essential_add" to "إضافة عنوان ضروري", "essential_edit" to "تعديل العنوان الضروري", "essential_delete" to "حذف العنوان الضروري",
+    "essential_delete_hint" to "هل تريد حذف “{0}”؟", "essential_manager_empty" to "لم تتم إضافة عناوين ضرورية بعد.",
+    "essential_name" to "الاسم العام أو الفارسي", "essential_name_tr" to "الاسم التركي (اختياري)", "essential_city_id" to "المدينة أو المنطقة",
+    "essential_hours" to "ساعات الخدمة", "essential_description" to "الوصف", "essential_lat" to "خط العرض (اختياري)", "essential_lon" to "خط الطول (اختياري)",
+    "essential_active" to "إظهار في القائمة العامة", "essential_invalid_coordinates" to "لإظهار الخريطة، أدخل إحداثيين صالحين أو اتركهما فارغين.",
+    "essential_save_failed" to "تعذر حفظ العنوان الضروري أو حذفه.",
     "media_title" to "صور وفيديوهات الإعلان",
     "media_empty" to "لم تُضف صور أو فيديوهات بعد",
     "media_add_link" to "إضافة برابط",

@@ -58,18 +58,15 @@ import com.karbama.app.util.WorldLanguages
 import com.karbama.app.ui.theme.*
 
 
-// ==================== پس‌زمینه‌ی مِش رنگی (دیزاین v3) ====================
+// ==================== پس‌زمینهٔ slate/red مشترک (v10.0.4) ====================
 
-/**
- * مِش رنگی + هاله‌های نرم زیر همه‌ی صفحه‌ها.
- * روی ریشه‌ی برنامه یک‌بار اعمال می‌شود و صفحه‌ها روی آن شفاف‌اند.
- */
+/** هاله‌های بسیار ملایم slate/red زیر همهٔ صفحه‌ها. */
 fun Modifier.brandBackdrop(): Modifier = this.drawBehind {
     drawRect(
         brush = Brush.verticalGradient(
-            0f to Surface,
-            0.5f to Surface,
-            1f to VioletLight
+            0f to Bg,
+            0.5f to Bg,
+            1f to FieldBg
         )
     )
 
@@ -87,10 +84,10 @@ fun Modifier.brandBackdrop(): Modifier = this.drawBehind {
 
     val w = size.width
     val h = size.height
-    orb(w * 1.02f, h * 0.02f, w * 0.80f, Mint, 0.40f)
-    orb(w * -0.06f, h * 0.24f, w * 0.78f, Violet, 0.26f)
-    orb(w * 0.99f, h * 0.72f, w * 0.76f, Coral, 0.22f)
-    orb(w * 0.08f, h * 1.00f, w * 0.72f, Sun, 0.24f)
+    orb(w * 1.02f, h * 0.02f, w * 0.80f, Brand, 0.14f)
+    orb(w * -0.06f, h * 0.24f, w * 0.78f, BrandDeep, 0.15f)
+    orb(w * 0.99f, h * 0.72f, w * 0.76f, BrandLight, 0.10f)
+    orb(w * 0.08f, h * 1.00f, w * 0.72f, Brand, 0.08f)
 }
 
 // ==================== لوگو ====================
@@ -126,7 +123,9 @@ fun TopBar(
     onBack: (() -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
-    Surface(color = GlassBar) {
+    Surface(color = GlassBar, shadowElevation = 3.dp) {
+        Column {
+            Box(Modifier.fillMaxWidth().height(3.dp).background(BrandBrush))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,6 +162,7 @@ fun TopBar(
             trailing()
         }
         HorizontalDivider(thickness = 1.dp, color = Line)
+        }
     }
 }
 
@@ -278,8 +278,8 @@ fun EmphasisButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tone: Color = Blue,
-    fill: Color = BlueLight
+    tone: Color = Brand,
+    fill: Color = BrandLight
 ) {
     val shape = MaterialTheme.shapes.medium
     Box(

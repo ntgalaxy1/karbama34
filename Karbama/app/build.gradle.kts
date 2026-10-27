@@ -33,8 +33,8 @@ android {
         targetSdk = 36
         // v10.0.1 is the permanent-signing baseline. Version codes stay monotonic
         // so GitHub APK users and the future Play track can recognise later updates.
-        versionCode = 10003
-        versionName = "10.0.3"
+        versionCode = 10004
+        versionName = "10.0.4"
         vectorDrawables { useSupportLibrary = true }
     }
 

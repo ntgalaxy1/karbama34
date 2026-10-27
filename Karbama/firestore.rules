@@ -334,6 +334,63 @@ service cloud.firestore {
         || (isCollaborator() && resource.data.ownerUid == request.auth.uid);
     }
 
+    // v10.0.4: public, manager-curated essential contacts/addresses. These
+    // rows never contain applicant information, so they can be read before
+    // registration. Only the verified main admin may create or edit them.
+    match /essentialAddresses/{addressId} {
+      function validEssentialAddress() {
+        return request.resource.data.keys().hasOnly([
+            "countryCode", "cityId", "category", "title", "titleTr",
+            "address", "phone", "hours", "description", "lat", "lon",
+            "active", "ownerUid", "updatedAt"
+          ])
+          && request.resource.data.keys().hasAll([
+            "countryCode", "cityId", "category", "title", "titleTr",
+            "address", "phone", "hours", "description", "active", "ownerUid", "updatedAt"
+          ])
+          && request.resource.data.countryCode == "TR"
+          && request.resource.data.cityId is string
+          && request.resource.data.cityId.size() >= 2
+          && request.resource.data.cityId.size() <= 80
+          && request.resource.data.category in ["immigration", "health", "legal", "transport", "other"]
+          && request.resource.data.title is string
+          && request.resource.data.title.size() >= 2
+          && request.resource.data.title.size() <= 160
+          && request.resource.data.titleTr is string
+          && request.resource.data.titleTr.size() <= 160
+          && request.resource.data.address is string
+          && request.resource.data.address.size() <= 500
+          && request.resource.data.phone is string
+          && request.resource.data.phone.size() <= 64
+          && request.resource.data.hours is string
+          && request.resource.data.hours.size() <= 160
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 1200
+          && request.resource.data.active is bool
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.updatedAt is int
+          && (
+            !request.resource.data.keys().hasAny(["lat", "lon"])
+            || (
+              request.resource.data.keys().hasAll(["lat", "lon"])
+              && request.resource.data.lat is number
+              && request.resource.data.lat >= -90
+              && request.resource.data.lat <= 90
+              && request.resource.data.lon is number
+              && request.resource.data.lon >= -180
+              && request.resource.data.lon <= 180
+            )
+          );
+      }
+
+      allow read: if true;
+      allow create: if isAdmin() && validEssentialAddress();
+      allow update: if isAdmin()
+        && validEssentialAddress()
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isAdmin();
+    }
+
     // Duplicate registration prevention
     // Key format: nid_<sha256> or ph_<sha256>
     // Fields: owner, kind, createdAt

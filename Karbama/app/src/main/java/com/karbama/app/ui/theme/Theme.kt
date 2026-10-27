@@ -36,24 +36,26 @@ private var nightPalette by mutableStateOf(false)
 val isKarbamaDarkTheme: Boolean get() = nightPalette
 private fun tone(light: Color, dark: Color): Color = if (nightPalette) dark else light
 
-// برند
-val Brand get() = tone(Color(0xFF0E9F8E), Color(0xFF22BFAE))
-val BrandDark get() = tone(Color(0xFF066F6B), Color(0xFF86EEE1))
-val BrandDeep get() = tone(Color(0xFF0A7F91), Color(0xFF167889))
-val BrandLight get() = tone(Color(0xFFE6F7F4), Color(0xFF123D3B))
-val BrandTeal get() = tone(Color(0xFF12B39F), Color(0xFF25BCAA))
-val BrandGreen get() = tone(Color(0xFF10B39F), Color(0xFF20B8A5))
-val BrandTint2 get() = tone(Color(0xFFD6F2EC), Color(0xFF173C39))
+// برند v10.0.4 — زبان بصری مرجع: slate تیره با accent قرمز.
+// نام‌های قدیمی عمداً حفظ شده‌اند تا screenهای فعلی به‌تدریج، بدون شکستن
+// رفتار یا داده‌های Firebase، به design system جدید منتقل شوند.
+val Brand get() = tone(Color(0xFFB91C1C), Color(0xFFF87171))
+val BrandDark get() = tone(Color(0xFF7F1D1D), Color(0xFFFCA5A5))
+val BrandDeep get() = tone(Color(0xFF450A0A), Color(0xFF991B1B))
+val BrandLight get() = tone(Color(0xFFFEF2F2), Color(0xFF3F141A))
+val BrandTeal get() = tone(Color(0xFFDC2626), Color(0xFFEF4444))
+val BrandGreen get() = tone(Color(0xFFDC2626), Color(0xFFEF4444))
+val BrandTint2 get() = tone(Color(0xFFFEE2E2), Color(0xFF32151A))
 
 // متن، سطوح و قاب‌ها
-val Ink get() = tone(Color(0xFF0F1F2B), Color(0xFFF0F6F7))
-val Ink2 get() = tone(Color(0xFF3F5566), Color(0xFFC7D5D8))
-val Ink3 get() = tone(Color(0xFF57697A), Color(0xFF9DB0B5))
-val Line get() = tone(Color(0xFFE3ECF0), Color(0xFF2D464C))
-val Surface get() = tone(Color(0xFFF6FAFB), Color(0xFF0D181D))
-val FieldBg get() = tone(Color(0xFFF8FBFC), Color(0xFF17272C))
-val CardBg get() = tone(Color(0xFFFFFFFF), Color(0xFF15252A))
-val Bg get() = Color.Transparent
+val Ink get() = tone(Color(0xFF0F172A), Color(0xFFF8FAFC))
+val Ink2 get() = tone(Color(0xFF334155), Color(0xFFCBD5E1))
+val Ink3 get() = tone(Color(0xFF64748B), Color(0xFF94A3B8))
+val Line get() = tone(Color(0xFFE2E8F0), Color(0xFF334155))
+val Surface get() = tone(Color(0xFFF8FAFC), Color(0xFF020617))
+val FieldBg get() = tone(Color(0xFFF1F5F9), Color(0xFF0F172A))
+val CardBg get() = tone(Color(0xFFFFFFFF), Color(0xFF111827))
+val Bg get() = tone(Color(0xFFF8FAFC), Color(0xFF020617))
 
 // لهجه‌ها
 val Sun get() = tone(Color(0xFFFFB020), Color(0xFFFFBF4F))
@@ -95,16 +97,16 @@ val GraphiteLight get() = tone(Color(0xFFEFF3F5), Color(0xFF26363B))
 val GraphiteLine get() = tone(Color(0xFFE3ECF0), Color(0xFF2D464C))
 
 // قاب‌های تزئینی
-val Bezel get() = tone(Color(0xFF101C24), Color(0xFF080E11))
-val Bezel2 get() = tone(Color(0xFF2B3D48), Color(0xFF1A2B31))
-val PhMid get() = tone(Color(0xFFC6D5DE), Color(0xFF40565D))
-val PhLow get() = tone(Color(0xFFD9E4EA), Color(0xFF2C4148))
-val GlassFill get() = tone(Color(0xFFFFFFFF), Color(0xFF15252A))
-val GlassFillSoft get() = tone(Color(0xFFF6FAFB), Color(0xFF17272C))
-val GlassStroke get() = tone(Color(0xB3FFFFFF), Color(0x553F5A61))
-val GlassBar get() = tone(Color(0xFFFFFFFF), Color(0xFF15252A))
+val Bezel get() = tone(Color(0xFF0F172A), Color(0xFF020617))
+val Bezel2 get() = tone(Color(0xFF334155), Color(0xFF111827))
+val PhMid get() = tone(Color(0xFFCBD5E1), Color(0xFF475569))
+val PhLow get() = tone(Color(0xFFE2E8F0), Color(0xFF334155))
+val GlassFill get() = tone(Color(0xFFFFFFFF), Color(0xFF111827))
+val GlassFillSoft get() = tone(Color(0xFFF8FAFC), Color(0xFF0F172A))
+val GlassStroke get() = tone(Color(0xB3FFFFFF), Color(0x55475569))
+val GlassBar get() = tone(Color(0xFFFFFFFF), Color(0xFF111827))
 
-val BrandBrush: Brush get() = Brush.linearGradient(listOf(Brand, BrandTeal, BrandDeep))
+val BrandBrush: Brush get() = Brush.linearGradient(listOf(BrandDeep, Brand, BrandTeal))
 val HeaderBrush: Brush get() = BrandBrush
 
 // شبکهٔ فاصله و گردی

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
@@ -95,6 +96,7 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
     }
     val jobs by jobsFlow.collectAsState(initial = emptyList())
     val hotels by hotelsFlow.collectAsState(initial = emptyList())
+    val essentialAddresses by vm.essentialAddresses.collectAsState(initial = emptyList())
     LaunchedEffect(jobs) { vm.recordVisibleJobs(jobs) }
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -182,6 +184,7 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
                         loc = loc,
                         jobs = jobs,
                         hotels = hotels,
+                        essentialAddresses = essentialAddresses,
                         onOpenJob = { nav.navigate(Routes.job(it.id)) },
                         onOpenEditProfile = { nav.navigate(Routes.EDIT_PROFILE) },
                         onNewJob = { nav.navigate(Routes.JOB_NEW) },
@@ -362,13 +365,14 @@ fun AppRoot(vm: AppViewModel, loc: Loc) {
     }
 }
 
-/** بدنه‌ی برنامه با سه تب: آگهی‌ها، پروفایل، مدیریت */
+/** بدنهٔ کاربر: آگهی‌ها، آدرس‌های ضروری، پروفایل، مسیر و ارتباط؛ مدیر پنل تمام‌صفحه دارد. */
 @Composable
 private fun MainShell(
     vm: AppViewModel,
     loc: Loc,
     jobs: List<Job>,
     hotels: List<Hotel>,
+    essentialAddresses: List<com.karbama.app.data.model.EssentialAddress>,
     onOpenJob: (Job) -> Unit,
     onOpenEditProfile: () -> Unit,
     onNewJob: () -> Unit,
@@ -430,30 +434,29 @@ private fun MainShell(
                     NavigationBarItem(
                         selected = tab == 1,
                         onClick = { tab = 1 },
-                        icon = { Text("👤", fontSize = 20.sp) },
-                        label = {
-                            Text(loc["tab_profile"], style = MaterialTheme.typography.labelSmall)
-                        },
+                        icon = { Icon(Icons.Filled.LocationOn, contentDescription = null) },
+                        label = { Text(loc["tab_addresses"], style = MaterialTheme.typography.labelSmall) },
                         colors = navItemColors()
                     )
-                    // v52.0.2: مسیر‌یابی کشور مقصد، برای همهٔ کارجویان ثبت‌نام‌شده (قفل پرداخت ندارد).
                     NavigationBarItem(
                         selected = tab == 2,
                         onClick = { tab = 2 },
-                        icon = { Text("🧭", fontSize = 20.sp) },
-                        label = {
-                            Text(loc["tab_route"], style = MaterialTheme.typography.labelSmall)
-                        },
+                        icon = { Text("👤", fontSize = 20.sp) },
+                        label = { Text(loc["tab_profile"], style = MaterialTheme.typography.labelSmall) },
                         colors = navItemColors()
                     )
-                    // «ارتباط با ما» — فقط برای کاربران عادی (مدیر پنل تمام‌صفحه دارد)
                     NavigationBarItem(
                         selected = tab == 3,
                         onClick = { tab = 3 },
+                        icon = { Text("🧭", fontSize = 20.sp) },
+                        label = { Text(loc["tab_route"], style = MaterialTheme.typography.labelSmall) },
+                        colors = navItemColors()
+                    )
+                    NavigationBarItem(
+                        selected = tab == 4,
+                        onClick = { tab = 4 },
                         icon = { Text("☎️", fontSize = 20.sp) },
-                        label = {
-                            Text(loc["tab_contact"], style = MaterialTheme.typography.labelSmall)
-                        },
+                        label = { Text(loc["tab_contact"], style = MaterialTheme.typography.labelSmall) },
                         colors = navItemColors()
                     )
                 }
@@ -482,6 +485,7 @@ private fun MainShell(
                     jobs = jobs,
                     applicants = applicants,
                     hotels = hotels,
+                    essentialAddresses = essentialAddresses,
                     onNewJob = onNewJob,
                     onEditJob = onEditJob,
                     onDeleteJob = { vm.deleteJob(it.id) },   // #26: تأیید داخل خود پنل مدیریت پرسیده می‌شود
@@ -506,6 +510,8 @@ private fun MainShell(
                     onSetPayment = { person, st -> vm.setApplicantPayment(person, st) },  // #34
                     onSaveHotel = { vm.saveHotel(it) },
                     onDeleteHotel = { vm.deleteHotel(it) },
+                    onSaveEssentialAddress = { vm.saveEssentialAddress(it) },
+                    onDeleteEssentialAddress = { vm.deleteEssentialAddress(it) },
                     themeMode = vm.themeMode,
                     onThemeChange = { vm.applyThemeMode(it) },
                     onExit = {
@@ -537,7 +543,9 @@ private fun MainShell(
                 )
 
 
-                tab == 1 -> ProfileContent(
+                tab == 1 -> EssentialAddressesContent(loc = loc, addresses = essentialAddresses)
+
+                tab == 2 -> ProfileContent(
                     loc = loc,
                     applicant = vm.myProfile,
                     appliedCount = vm.appliedIds.size,
@@ -566,9 +574,9 @@ private fun MainShell(
                     onRequestAccountDeletion = { vm.requestAccountDeletion() }
                 )
 
-                tab == 2 -> RouteContent(loc = loc, applicant = vm.myProfile, hotels = hotels)
+                tab == 3 -> RouteContent(loc = loc, applicant = vm.myProfile, hotels = hotels)
 
-                tab == 3 -> ContactContent(loc = loc)
+                tab == 4 -> ContactContent(loc = loc)
 
             }
         }

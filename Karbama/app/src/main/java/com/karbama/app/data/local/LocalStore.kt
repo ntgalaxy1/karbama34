@@ -1,6 +1,8 @@
 package com.karbama.app.data.local
 
 import com.karbama.app.data.model.Applicant
+import com.karbama.app.data.model.EssentialAddress
+import com.karbama.app.data.model.EssentialAddressSamples
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.sample.Catalog
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,11 +18,13 @@ object LocalStore {
 
     val jobs = MutableStateFlow<List<Job>>(emptyList())
     val applicants = MutableStateFlow<List<Applicant>>(emptyList())
+    val essentialAddresses = MutableStateFlow<List<EssentialAddress>>(emptyList())
 
     fun init(p: AppPrefs) {
         prefs = p
         jobs.value = p.localJobs() ?: Catalog.sampleJobs().also { p.saveLocalJobs(it) }
         applicants.value = p.localApplicants() ?: Catalog.sampleApplicants().also { p.saveLocalApplicants(it) }
+        essentialAddresses.value = p.localEssentialAddresses() ?: EssentialAddressSamples.default().also { p.saveLocalEssentialAddresses(it) }
     }
 
     // ---------- آگهی‌ها ----------
@@ -37,6 +41,22 @@ object LocalStore {
         val list = jobs.value.filterNot { it.id == id }
         jobs.value = list
         prefs?.saveLocalJobs(list)
+    }
+
+    // ---------- آدرس‌های ضروری (فقط demo محلی) ----------
+
+    fun upsertEssentialAddress(address: EssentialAddress) {
+        val list = essentialAddresses.value.toMutableList()
+        val index = list.indexOfFirst { it.id == address.id }
+        if (index >= 0) list[index] = address else list.add(0, address)
+        essentialAddresses.value = list
+        prefs?.saveLocalEssentialAddresses(list)
+    }
+
+    fun deleteEssentialAddress(id: String) {
+        val list = essentialAddresses.value.filterNot { it.id == id }
+        essentialAddresses.value = list
+        prefs?.saveLocalEssentialAddresses(list)
     }
 
     // ---------- متقاضیان ----------
@@ -93,5 +113,6 @@ object LocalStore {
     fun reset() {
         jobs.value = Catalog.sampleJobs().also { prefs?.saveLocalJobs(it) }
         applicants.value = Catalog.sampleApplicants().also { prefs?.saveLocalApplicants(it) }
+        essentialAddresses.value = EssentialAddressSamples.default().also { prefs?.saveLocalEssentialAddresses(it) }
     }
 }

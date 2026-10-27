@@ -27,6 +27,8 @@ object Config {
     const val COL_APPLICANTS = "applicants"
     /** هتل‌های مسیریابی؛ فقط مدیر می‌نویسد، کاربران واردشده می‌خوانند. */
     const val COL_HOTELS = "hotels"
+    /** v10.0.4: نشانی‌ها و شماره‌های ضروری ترکیه؛ فقط مدیر مدیریت می‌کند. */
+    const val COL_ESSENTIAL_ADDRESSES = "essentialAddresses"
     const val COL_ADMINS = "admins"
 
     /** #29: پسندیده‌ها و درخواست‌های ارسالی کاربران (برای دیدن مدیر در پنل) */

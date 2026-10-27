@@ -60,6 +60,8 @@ import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Hotel
+import com.karbama.app.data.model.EssentialAddress
+import com.karbama.app.data.model.EssentialAddressCategory
 import com.karbama.app.data.routes.RouteCity
 import com.karbama.app.data.routes.RoutesRepo
 import com.karbama.app.data.sample.Catalog
@@ -223,6 +225,7 @@ fun AdminContent(
     jobs: List<Job>,
     applicants: List<Applicant>,
     hotels: List<com.karbama.app.data.model.Hotel> = emptyList(),
+    essentialAddresses: List<EssentialAddress> = emptyList(),
     onNewJob: () -> Unit,
     onEditJob: (Job) -> Unit,
     onDeleteJob: (Job) -> Unit,
@@ -245,6 +248,8 @@ fun AdminContent(
     onSetPayment: (Applicant, String) -> Unit = { _, _ -> },  // #34: تأیید/لغو پرداخت
     onSaveHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
     onDeleteHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    onSaveEssentialAddress: (EssentialAddress) -> Unit = {},
+    onDeleteEssentialAddress: (EssentialAddress) -> Unit = {},
     themeMode: String = com.karbama.app.ui.theme.ThemeMode.SYSTEM,
     onThemeChange: (String) -> Unit = {},
     onExit: () -> Unit,
@@ -397,6 +402,9 @@ fun AdminContent(
                 hotels = hotels,
                 onSaveHotel = onSaveHotel,
                 onDeleteHotel = onDeleteHotel,
+                essentialAddresses = essentialAddresses,
+                onSaveEssentialAddress = onSaveEssentialAddress,
+                onDeleteEssentialAddress = onDeleteEssentialAddress,
                 themeMode = themeMode,
                 onThemeChange = onThemeChange,
                 modifier = Modifier.padding(padding),
@@ -462,7 +470,7 @@ fun AdminContent(
                                 onSelect = { cityFilter = it },
                                 emptyOptionLabel = loc["all"],
                                 inlineLabel = true,
-                                containerColor = Color.White
+                                containerColor = CardBg
                             )
                         }
                         Box(Modifier.weight(1f)) {
@@ -477,7 +485,7 @@ fun AdminContent(
                                 searchPlaceholder = loc["search_profession"],
                                 emptyOptionLabel = loc["all"],
                                 inlineLabel = true,
-                                containerColor = Color.White
+                                containerColor = CardBg
                             )
                         }
                     }
@@ -496,7 +504,7 @@ fun AdminContent(
                         emptyOptionLabel = loc["all"],
                         matcher = { v, q -> langSearch[v]?.contains(q, ignoreCase = true) == true },
                         inlineLabel = true,
-                        containerColor = Color.White
+                        containerColor = CardBg
                     )
                 }
                 item {
@@ -617,8 +625,7 @@ fun AdminContent(
 // v46 — اجزای پنل مدیریت دقیقاً مطابق karbama-demo.html
 // ==========================================================
 
-/** گرادیان appbar.teal دمو: linear-gradient(135deg,#088080,#0A7F91) */
-private val AdminBarBrush = Brush.linearGradient(listOf(Color(0xFF088080), Color(0xFF0A7F91), Color(0xFF0A7F91)))
+/** v10.0.4: پنل مدیر از slate/red واکنشی design system استفاده می‌کند. */
 private val AdmCardShape = RoundedCornerShape(20.dp)
 
 /** نوار بالای پنل: آیکون + عنوان، دکمه‌ی طلایی «+» و دکمه‌ی «خروج از حساب» */
@@ -635,7 +642,7 @@ private fun AdminHeader(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(AdminBarBrush)
+            .background(BrandBrush)
     ) {
         Row(
             Modifier
@@ -709,7 +716,7 @@ private fun AdminTabs(loc: Loc, tab: Int, peopleCount: Int, onTab: (Int) -> Unit
 private fun AdmCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    color: Color = Color.White,
+    color: Color = CardBg,
     padding: Dp = 12.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -788,7 +795,7 @@ private fun AdmSmallButton(text: String, danger: Boolean, modifier: Modifier, on
             .clip(shape)
             .background(
                 if (danger) Brush.linearGradient(listOf(Color(0xFFFEF0F0), Color(0xFFFFEDE7)))
-                else Brush.linearGradient(listOf(Color.White, Color.White))
+                else Brush.linearGradient(listOf(CardBg, CardBg))
             )
             .border(1.5.dp, if (danger) Color(0xFFFFEDE7) else Line, shape)
             .clickable(onClick = onClick)
@@ -1406,7 +1413,7 @@ private fun AdminExitButton(text: String, onClick: () -> Unit) {
         Modifier
             .height(38.dp)
             .clip(shape)
-            .background(Color(0xFF08606E))      // معادل مات rgba(6,50,58,.4) روی نوار → بدون دو رنگی
+            .background(BrandDeep)              // کنتراست ثابت روی هدر slate/red
             .border(1.4.dp, Color.White.copy(alpha = 0.55f), shape)
             .clickable(onClick = onClick)
             .padding(start = 12.dp, end = 16.dp),
@@ -1567,14 +1574,14 @@ private fun PwEye(shown: Boolean, label: String, onClick: () -> Unit, modifier: 
         modifier
             .size(32.dp)
             .clip(shape)
-            .background(if (shown) Color(0x33FFB020) else Color(0x1F0E9F8E))
+            .background(if (shown) AccentLight else BrandLight)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = if (shown) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
             contentDescription = label,
-            tint = if (shown) Color(0xFF8A5B00) else Color(0xFF0A7F91),
+            tint = if (shown) WarnStrong else Brand,
             modifier = Modifier.size(17.dp)
         )
     }
@@ -1652,7 +1659,7 @@ private fun AdmSecTitle(text: String) {
             Modifier
                 .size(8.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFF0E9F8E), Color(0xFF0A7F91))))
+                .background(BrandBrush)
         )
         Spacer(Modifier.width(8.dp))
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.Black, color = Ink2)
@@ -1700,6 +1707,9 @@ private fun AdminSettingsTab(
     hotels: List<com.karbama.app.data.model.Hotel> = emptyList(),
     onSaveHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
     onDeleteHotel: (com.karbama.app.data.model.Hotel) -> Unit = {},
+    essentialAddresses: List<EssentialAddress> = emptyList(),
+    onSaveEssentialAddress: (EssentialAddress) -> Unit = {},
+    onDeleteEssentialAddress: (EssentialAddress) -> Unit = {},
     themeMode: String = com.karbama.app.ui.theme.ThemeMode.SYSTEM,
     onThemeChange: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -1925,6 +1935,9 @@ private fun AdminSettingsTab(
             onSave = onSaveHotel,
             onDelete = onDeleteHotel
         )
+
+        Spacer(Modifier.height(16.dp))
+        EssentialAddressManagerCard(loc, essentialAddresses, onSaveEssentialAddress, onDeleteEssentialAddress)
     }
 
     // ---------- v52: تأیید پسورد فعلی (فقط وقتی Firebase «ورود اخیر» بخواهد) ----------
@@ -2260,3 +2273,42 @@ private fun CollaboratorProvisionCard(onCreate: (String, String) -> Unit) {
         Spacer(Modifier.height(10.dp)); PrimaryButton(text = "ایجاد حساب همکار", onClick = { if (user.length >= 3 && pass.length >= 8) { onCreate(user, pass); pass = "" } })
     }
 }
+
+
+@Composable
+private fun EssentialAddressManagerCard(loc: Loc, addresses: List<EssentialAddress>, onSave: (EssentialAddress) -> Unit, onDelete: (EssentialAddress) -> Unit) {
+    var showEditor by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(EssentialAddress()) }
+    var pendingDelete by remember { mutableStateOf<EssentialAddress?>(null) }
+    SectionCard {
+        SectionTitle(loc["essential_manager"])
+        Spacer(Modifier.height(6.dp)); Text(loc["essential_manager_hint"], style = MaterialTheme.typography.bodySmall, color = Ink3)
+        Spacer(Modifier.height(12.dp)); PrimaryButton(text = "＋ " + loc["essential_add"], onClick = { editing = EssentialAddress(); showEditor = true })
+        if (addresses.isEmpty()) { Spacer(Modifier.height(12.dp)); Text(loc["essential_manager_empty"], style = MaterialTheme.typography.bodySmall, color = Ink3) }
+        else addresses.sortedWith(compareBy<EssentialAddress> { it.cityId }.thenBy { it.title }).forEach { item ->
+            HorizontalDivider(color = Line)
+            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(essentialCategoryEmoji(item.category), fontSize = 20.sp); Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) { Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(listOf(item.cityId, item.phone).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Ink3, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                TextButton(onClick = { editing = item; showEditor = true }) { Icon(Icons.Filled.Edit, loc["essential_edit"], tint = Ink2) }
+                TextButton(onClick = { pendingDelete = item }) { Icon(Icons.Filled.Delete, loc["essential_delete"], tint = Danger) }
+            }
+        }
+    }
+    if (showEditor) EssentialAddressEditorDialog(loc, editing, { showEditor = false }) { value -> onSave(value); showEditor = false }
+    pendingDelete?.let { item -> AlertDialog(onDismissRequest = { pendingDelete = null }, title = { Text(loc["essential_delete"]) }, text = { Text(loc.f("essential_delete_hint", item.title)) }, confirmButton = { TextButton(onClick = { onDelete(item); pendingDelete = null }) { Text(loc["del_yes"], color = Danger) } }, dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(loc["del_no"], color = Ink2) } }) }
+}
+
+@Composable
+private fun EssentialAddressEditorDialog(loc: Loc, initial: EssentialAddress, onDismiss: () -> Unit, onSave: (EssentialAddress) -> Unit) {
+    var title by remember(initial.id) { mutableStateOf(initial.title) }; var titleTr by remember(initial.id) { mutableStateOf(initial.titleTr) }; var category by remember(initial.id) { mutableStateOf(initial.category) }; var cityId by remember(initial.id) { mutableStateOf(initial.cityId) }; var address by remember(initial.id) { mutableStateOf(initial.address) }; var phone by remember(initial.id) { mutableStateOf(initial.phone) }; var hours by remember(initial.id) { mutableStateOf(initial.hours) }; var description by remember(initial.id) { mutableStateOf(initial.description) }; var lat by remember(initial.id) { mutableStateOf(initial.lat?.toString().orEmpty()) }; var lon by remember(initial.id) { mutableStateOf(initial.lon?.toString().orEmpty()) }; var active by remember(initial.id) { mutableStateOf(initial.active) }
+    val latValue = lat.trim().replace(',', '.').toDoubleOrNull(); val lonValue = lon.trim().replace(',', '.').toDoubleOrNull(); val hasCoordinates = lat.isNotBlank() || lon.isNotBlank(); val coordinatesValid = !hasCoordinates || (latValue != null && lonValue != null && latValue in -90.0..90.0 && lonValue in -180.0..180.0); val valid = title.trim().length >= 2 && cityId.trim().length >= 2 && coordinatesValid
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (initial.id.isBlank()) loc["essential_add"] else loc["essential_edit"]) }, text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        KbField(title, { title = it.take(160) }, loc["essential_name"], required = true); KbField(titleTr, { titleTr = it.take(160) }, loc["essential_name_tr"])
+        PickerField(loc["essential_filter_category"], loc["essential_category_$category"], loc["essential_category_other"], EssentialAddressCategory.all.map { it to loc["essential_category_$it"] }, { category = it }, required = true)
+        KbField(cityId, { cityId = it.take(80) }, loc["essential_city_id"], placeholder = "nationwide / istanbul", required = true); KbField(address, { address = it.take(500) }, loc["address"], singleLine = false, minLines = 2); KbField(phone, { phone = it.take(64) }, loc["phone_label"], keyboardType = KeyboardType.Phone); KbField(hours, { hours = it.take(160) }, loc["essential_hours"]); KbField(description, { description = it.take(1200) }, loc["essential_description"], singleLine = false, minLines = 2); KbField(lat, { lat = it }, loc["essential_lat"], placeholder = "41.0082", keyboardType = KeyboardType.Decimal); KbField(lon, { lon = it }, loc["essential_lon"], placeholder = "28.9784", keyboardType = KeyboardType.Decimal)
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(active, { active = it }); Spacer(Modifier.width(8.dp)); Text(loc["essential_active"], color = Ink2) }; if (!coordinatesValid) Text(loc["essential_invalid_coordinates"], style = MaterialTheme.typography.bodySmall, color = Danger)
+    } }, confirmButton = { TextButton(enabled = valid, onClick = { onSave(initial.copy(countryCode = "TR", title = title.trim(), titleTr = titleTr.trim(), category = category, cityId = cityId.trim().lowercase(), address = address.trim(), phone = phone.trim(), hours = hours.trim(), description = description.trim(), lat = latValue, lon = lonValue, active = active)) }) { Text(loc["save"], color = BrandDark) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(loc["del_no"], color = Ink2) } })
+}
+
+private fun essentialCategoryEmoji(category: String): String = when (category) { EssentialAddressCategory.IMMIGRATION -> "🛂"; EssentialAddressCategory.HEALTH -> "🏥"; EssentialAddressCategory.LEGAL -> "⚖️"; EssentialAddressCategory.TRANSPORT -> "🚌"; else -> "📍" }

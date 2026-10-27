@@ -13,12 +13,14 @@ import com.karbama.app.data.model.AdminMode
 import com.karbama.app.data.model.Applicant
 import com.karbama.app.data.model.Job
 import com.karbama.app.data.model.Hotel
+import com.karbama.app.data.model.EssentialAddress
 import com.karbama.app.data.model.JobFilter
 import com.karbama.app.data.repo.AdminGate
 import com.karbama.app.data.repo.ApplicantRepository
 import com.karbama.app.data.repo.JobMediaStore
 import com.karbama.app.data.repo.JobRepository
 import com.karbama.app.data.repo.HotelRepository
+import com.karbama.app.data.repo.EssentialAddressRepository
 import com.karbama.app.data.repo.IdentityRepository
 import com.karbama.app.data.repo.UserActivityRepository
 import com.karbama.app.data.repo.ActivityItem
@@ -53,6 +55,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val jobRepo = JobRepository()
     private val hotelRepo = HotelRepository()
+    private val essentialAddressRepo = EssentialAddressRepository()
     private val applicantRepo = ApplicantRepository()
     private val activityRepo = UserActivityRepository()
     private val identityRepo = IdentityRepository()
@@ -92,6 +95,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** فهرست زندهٔ هتل‌های اضافه‌شده توسط مدیر برای تب مسیریابی. */
     val hotels = hotelRepo.observeHotels()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val essentialAddresses = essentialAddressRepo.observeAddresses()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun applicantsFlow(live: Boolean): Flow<List<Applicant>> =
@@ -725,6 +731,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val result = hotelRepo.delete(hotel.id)
             message = if (result.isSuccess) "🗑 " + hotel.name
             else "⚠️ " + friendlyError(result.exceptionOrNull() ?: IllegalStateException(), "err_register_failed")
+        }
+    }
+
+    fun saveEssentialAddress(address: EssentialAddress) {
+        viewModelScope.launch {
+            busy = true
+            val result = essentialAddressRepo.save(address)
+            busy = false
+            message = if (result.isSuccess) "✅ " + address.title
+            else "⚠️ " + friendlyError(result.exceptionOrNull() ?: IllegalStateException(), "essential_save_failed")
+        }
+    }
+
+    fun deleteEssentialAddress(address: EssentialAddress) {
+        viewModelScope.launch {
+            val result = essentialAddressRepo.delete(address.id)
+            message = if (result.isSuccess) "🗑 " + address.title
+            else "⚠️ " + friendlyError(result.exceptionOrNull() ?: IllegalStateException(), "essential_save_failed")
         }
     }
 
